@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亚马逊工具箱</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏导航 -->
+        <nav class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">🛒</span>
+                <span class="logo-text">亚马逊工具箱</span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-tab="link-generator">
+                    <span class="nav-icon">🔗</span>
+                    <span class="nav-text">链接生成器</span>
+                </li>
+                <li class="nav-item" data-tab="rank-checker">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">排名查询</span>
+                </li>
+                <li class="nav-item" data-tab="real-link">
+                    <span class="nav-icon">🎯</span>
+                    <span class="nav-text">真实链接获取</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="status-indicator" id="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">系统正常</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 链接生成器 -->
+            <section class="tab-content active" id="link-generator">
+                <header class="page-header">
+                    <h1>🔗 亚马逊链接生成器</h1>
+                    <p class="subtitle">生成带追踪参数的亚马逊产品链接</p>
+                </header>
+
+                <div class="card">
+                    <div class="mode-selector">
+                        <button class="mode-btn active" data-mode="simple">简单模式</button>
+                        <button class="mode-btn" data-mode="search">搜索模式</button>
+                        <button class="mode-btn" data-mode="full">完整模拟</button>
+                        <button class="mode-btn" data-mode="custom">自定义模式</button>
+                    </div>
+
+                    <!-- 简单模式 -->
+                    <div class="mode-panel active" data-panel="simple">
+                        <div class="form-group">
+                            <label for="simple-asin">ASIN</label>
+                            <input type="text" id="simple-asin" placeholder="例如: B0GPVLJC3B" maxlength="10">
+                            <span class="hint">亚马逊产品唯一标识，10位字符</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="simple-tag">联盟标签 (可选)</label>
+                            <input type="text" id="simple-tag" placeholder="例如: jackyfan5-20" value="jackyfan5-20">
+                            <span class="hint">你的 Amazon Associates 追踪标签</span>
+                        </div>
+                    </div>
+
+                    <!-- 搜索模式 -->
+                    <div class="mode-panel" data-panel="search">
+                        <div class="form-group">
+                            <label for="search-keyword">搜索关键词</label>
+                            <input type="text" id="search-keyword" placeholder="例如: deer camera">
+                            <span class="hint">用户在亚马逊搜索的词</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="search-asin">目标 ASIN</label>
+                            <input type="text" id="search-asin" placeholder="例如: B0GPVLJC3B" maxlength="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="search-rank">搜索排名</label>
+                            <input type="text" id="search-rank" placeholder="例如: 8-198" value="1-1">
+                            <span class="hint">格式: 页码-排名，例如 1-1 表示第1页第1位</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="search-tag">联盟标签 (可选)</label>
+                            <input type="text" id="search-tag" placeholder="例如: jackyfan5-20" value="jackyfan5-20">
+                        </div>
+                    </div>
+
+                    <!-- 完整模拟模式 -->
+                    <div class="mode-panel" data-panel="full">
+                        <div class="form-group">
+                            <label for="full-title">产品标题</label>
+                            <input type="text" id="full-title" placeholder="例如: Dargahou Trail Camera Monitoring Wildlife">
+                            <span class="hint">完整产品标题，将转换为URL格式</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="full-asin">ASIN</label>
+                            <input type="text" id="full-asin" placeholder="例如: B0GPVLJC3B" maxlength="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="full-keyword">搜索关键词</label>
+                            <input type="text" id="full-keyword" placeholder="例如: deer cameras with night vision">
+                            <span class="hint">用户在亚马逊搜索的关键词</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="full-rank">搜索排名</label>
+                            <input type="text" id="full-rank" placeholder="例如: 8-198" value="1-1">
+                        </div>
+                        <div class="form-group">
+                            <label for="full-tag">联盟标签 (可选)</label>
+                            <input type="text" id="full-tag" placeholder="例如: jackyfan5-20" value="jackyfan5-20">
+                        </div>
+                        <div class="info-box">
+                            <strong>说明：</strong>此模式生成最接近真实亚马逊搜索链接的格式，包含 sprefix、ref、sr、xpid、crid 等所有可模拟参数。
+                            <br><strong>注意：</strong>dib（加密数据块）是亚马逊服务器生成的，无法模拟。
+                        </div>
+                    </div>
+
+                    <!-- 自定义模式 -->
+                    <div class="mode-panel" data-panel="custom">
+                        <div class="form-group">
+                            <label for="custom-asin">ASIN</label>
+                            <input type="text" id="custom-asin" placeholder="例如: B0GPVLJC3B" maxlength="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-title">产品标题</label>
+                            <input type="text" id="custom-title" placeholder="例如: Trail Camera Night Vision">
+                            <span class="hint">将自动转换为 URL 友好格式</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-keywords">关键词</label>
+                            <input type="text" id="custom-keywords" placeholder="例如: deer camera">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-tag">联盟标签 (可选)</label>
+                            <input type="text" id="custom-tag" placeholder="例如: jackyfan5-20" value="jackyfan5-20">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-crid">CRID (可选)</label>
+                            <input type="text" id="custom-crid" placeholder="例如: 1E1S2RS4CSJD7">
+                            <span class="hint">亚马逊搜索请求 ID，留空则自动生成</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-block" id="generate-btn">
+                        <span class="btn-text">生成链接</span>
+                        <span class="btn-loading" style="display: none;">
+                            <span class="spinner"></span> 生成中...
+                        </span>
+                    </button>
+
+                    <!-- 结果区域 -->
+                    <div class="result-section" id="link-result" style="display: none;">
+                        <div class="result-header">
+                            <h3>生成的链接</h3>
+                            <button class="btn btn-secondary btn-sm" id="copy-link-btn">复制链接</button>
+                        </div>
+                        <div class="result-link" id="result-link"></div>
+                        
+                        <div class="params-table-wrapper">
+                            <table class="params-table">
+                                <thead>
+                                    <tr>
+                                        <th>参数</th>
+                                        <th>值</th>
+                                        <th>说明</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="params-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 排名查询 -->
+            <section class="tab-content" id="rank-checker">
+                <header class="page-header">
+                    <h1>📊 排名查询</h1>
+                    <p class="subtitle">查询产品在亚马逊搜索结果中的排名位置</p>
+                </header>
+
+                <div class="card">
+                    <div class="form-group">
+                        <label for="rank-keyword">搜索关键词</label>
+                        <input type="text" id="rank-keyword" placeholder="例如: deer camera">
+                    </div>
+                    <div class="form-group">
+                        <label for="rank-asin">产品 ASIN</label>
+                        <input type="text" id="rank-asin" placeholder="例如: B0GPVLJC3B" maxlength="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="rank-max-pages">最大搜索页数</label>
+                        <select id="rank-max-pages">
+                            <option value="3">3页</option>
+                            <option value="5" selected>5页</option>
+                            <option value="10">10页</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary btn-block" id="check-rank-btn">
+                        <span class="btn-text">查询排名</span>
+                        <span class="btn-loading" style="display: none;">
+                            <span class="spinner"></span> 查询中...
+                        </span>
+                    </button>
+
+                    <!-- 排名结果 -->
+                    <div class="result-section" id="rank-result" style="display: none;">
+                        <div class="rank-display" id="rank-display">
+                            <div class="rank-number" id="rank-number">-</div>
+                            <div class="rank-label">排名位置</div>
+                        </div>
+                        <div class="rank-details" id="rank-details"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 真实链接获取 -->
+            <section class="tab-content" id="real-link">
+                <header class="page-header">
+                    <h1>🎯 真实链接获取</h1>
+                    <p class="subtitle">通过真实搜索获取带 dib 参数的亚马逊链接</p>
+                </header>
+
+                <div class="card">
+                    <div class="form-group">
+                        <label for="real-keyword">搜索关键词</label>
+                        <input type="text" id="real-keyword" placeholder="例如: deer camera">
+                        <span class="hint">用户在亚马逊搜索的词</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="real-asin">目标 ASIN</label>
+                        <input type="text" id="real-asin" placeholder="例如: B0GPVLJC3B" maxlength="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="real-max-pages">最大搜索页数</label>
+                        <select id="real-max-pages">
+                            <option value="3">3页</option>
+                            <option value="5" selected>5页</option>
+                            <option value="10">10页</option>
+                        </select>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="real-headless" checked>
+                            <span>后台模式运行（不显示浏览器窗口）</span>
+                        </label>
+                    </div>
+
+                    <div class="warning-box">
+                        <strong>⚠️ 注意：</strong>此功能会启动真实的浏览器进行搜索，可能需要较长时间（30-60秒）。请确保网络连接正常。
+                    </div>
+
+                    <button class="btn btn-primary btn-block" id="fetch-real-link-btn">
+                        <span class="btn-text">获取真实链接</span>
+                        <span class="btn-loading" style="display: none;">
+                            <span class="spinner"></span> 搜索中...
+                        </span>
+                    </button>
+
+                    <!-- 真实链接结果 -->
+                    <div class="result-section" id="real-link-result" style="display: none;">
+                        <div class="result-header">
+                            <h3>真实链接（从亚马逊获取）</h3>
+                            <button class="btn btn-secondary btn-sm" id="copy-real-link-btn">复制链接</button>
+                        </div>
+                        <div class="result-link real-link" id="real-link-text"></div>
+                        
+                        <div class="link-info" id="link-info"></div>
+                        
+                        <div class="params-table-wrapper">
+                            <table class="params-table">
+                                <thead>
+                                    <tr>
+                                        <th>参数</th>
+                                        <th>值</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="real-params-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

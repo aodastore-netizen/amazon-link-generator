@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "skills": {
+    "xiucheng-self-improving-agent": {
+      "version": "1.0.0",
+      "installedAt": 1773300721856
+    },
+    "skill-vetter": {
+      "version": "1.0.0",
+      "installedAt": 1773300725643
+    },
+    "skill-creator": {
+      "version": "0.1.0",
+      "installedAt": 1773300735042
+    },
+    "feishu-bitable-creator": {
+      "version": "1.0.2",
+      "installedAt": 1773746669591
+    },
+    "openai-whisper": {
+      "version": "1.0.0",
+      "installedAt": 1773910029513
+    }
+  }
+}

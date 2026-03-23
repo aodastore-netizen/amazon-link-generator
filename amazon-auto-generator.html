@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亚马逊链接全自动生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .api-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        .api-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .api-status.disconnected {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .progress-container {
+            display: none;
+            margin-top: 30px;
+        }
+        .progress-container.show {
+            display: block;
+        }
+        .progress-step {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 3px solid #e0e0e0;
+        }
+        .progress-step.active {
+            border-left-color: #667eea;
+            background: #f0f4ff;
+        }
+        .progress-step.completed {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .progress-step.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .step-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 12px;
+        }
+        .step-icon.pending {
+            background: #e0e0e0;
+            color: #666;
+        }
+        .step-icon.loading {
+            background: #667eea;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+        .step-icon.success {
+            background: #28a745;
+            color: white;
+        }
+        .step-icon.error {
+            background: #dc3545;
+            color: white;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .step-text {
+            flex: 1;
+        }
+        .step-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        .step-desc {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border-radius: 12px;
+            border: 2px solid #28a745;
+        }
+        .result-container.show {
+            display: block;
+        }
+        .result-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #155724;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .result-link-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .result-link {
+            word-break: break-all;
+            font-size: 13px;
+            color: #667eea;
+            font-family: monospace;
+        }
+        .result-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .info-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .info-label {
+            font-size: 11px;
+            color: #666;
+        }
+        .info-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-top: 3px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-group .btn {
+            flex: 1;
+            margin-top: 0;
+            font-size: 14px;
+            padding: 12px;
+        }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .nav-links {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 10px;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .feature-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .feature-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+        .feature-desc {
+            font-size: 11px;
+            color: #666;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 亚马逊链接全自动生成器</h1>
+        <p class="subtitle">一键完成：查询排名 → 获取真实链接 → 生成推广链接</p>
+
+        <div class="features">
+            <div class="feature-item">
+                <div class="feature-icon">🔍</div>
+                <div class="feature-title">自动查询排名</div>
+                <div class="feature-desc">在亚马逊搜索并定位产品</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✨</div>
+                <div class="feature-title">获取真实参数</div>
+                <div class="feature-desc">包含 crid、xpid、dib 等</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🔗</div>
+                <div class="feature-title">生成推广链接</div>
+                <div class="feature-desc">自动添加联盟标签</div>
+            </div>
+        </div>
+
+        <div class="api-status disconnected" id="apiStatus">
+            ⚠️ 正在检查后端服务状态...
+        </div>
+
+        <div class="form-group">
+            <label for="keyword">搜索关键词</label>
+            <input type="text" id="keyword" placeholder="例如: deer camera">
+            <p class="hint">用户在亚马逊搜索的关键词</p>
+        </div>
+
+        <div class="form-group">
+            <label for="asin">产品 ASIN</label>
+            <input type="text" id="asin" placeholder="例如: B0GPVLJC3B">
+            <p class="hint">亚马逊产品唯一标识，10位字符</p>
+        </div>
+
+        <div class="form-group">
+            <label for="tag">联盟标签（可选）</label>
+            <input type="text" id="tag" placeholder="例如: jackyfan5-20" value="jackyfan5-20">
+            <p class="hint">你的 Amazon Associates 追踪标签</p>
+        </div>
+
+        <button class="btn" id="generateBtn" onclick="autoGenerate()">🚀 一键自动生成链接</button>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-step" id="step1">
+                <div class="step-icon pending" id="step1Icon">1</div>
+                <div class="step-text">
+                    <div class="step-title">启动浏览器</div>
+                    <div class="step-desc" id="step1Desc">准备访问亚马逊...</div>
+                </div>
+            </div>
+            <div class="progress-step" id="step2">
+                <div class="step-icon pending" id="step2Icon">2</div>
+                <div class="step-text">
+                    <div class="step-title">搜索产品</div>
+                    <div class="step-desc" id="step2Desc">在亚马逊执行搜索...</div>
+                </div>
+            </div>
+            <div class="progress-step" id="step3">
+                <div class="step-icon pending" id="step3Icon">3</div>
+                <div class="step-text">
+                    <div class="step-title">获取排名和链接</div>
+                    <div class="step-desc" id="step3Desc">提取真实链接参数...</div>
+                </div>
+            </div>
+            <div class="progress-step" id="step4">
+                <div class="step-icon pending" id="step4Icon">4</div>
+                <div class="step-text">
+                    <div class="step-title">生成推广链接</div>
+                    <div class="step-desc" id="step4Desc">添加联盟标签...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="result-title">🎉 链接生成成功！</div>
+            <div class="result-link-box">
+                <div class="result-link" id="resultLink"></div>
+            </div>
+            <div class="result-info">
+                <div class="info-item">
+                    <div class="info-label">搜索排名</div>
+                    <div class="info-value" id="resultRank">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">页码</div>
+                    <div class="info-value" id="resultPage">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">位置</div>
+                    <div class="info-value" id="resultPosition">-</div>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-success" onclick="copyResult()">📋 复制链接</button>
+                <button class="btn btn-secondary" onclick="resetForm()">🔄 再生成一个</button>
+            </div>
+        </div>
+
+        <div class="nav-links">
+            <a href="amazon-link-generator.html">手动模式 →</a>
+            <a href="amazon-rank-checker.html">仅查询排名 →</a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000';
+        let generatedLink = '';
+
+        // 检查 API 状态
+        async function checkApiStatus() {
+            const statusDiv = document.getElementById('apiStatus');
+            try {
+                const response = await fetch(`${API_BASE_URL}/`, { method: 'GET' });
+                if (response.ok) {
+                    statusDiv.textContent = '✅ 后端服务已连接，可以开始生成链接';
+                    statusDiv.className = 'api-status connected';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '⚠️ 后端服务未启动，请先运行：<code>python amazon_api_server.py</code>';
+                statusDiv.className = 'api-status disconnected';
+            }
+        }
+
+        // 更新步骤状态
+        function updateStep(stepNum, status, desc) {
+            const step = document.getElementById(`step${stepNum}`);
+            const icon = document.getElementById(`step${stepNum}Icon`);
+            const descEl = document.getElementById(`step${stepNum}Desc`);
+            
+            step.className = 'progress-step ' + status;
+            descEl.textContent = desc;
+            
+            if (status === 'active') {
+                icon.className = 'step-icon loading';
+                icon.textContent = '⟳';
+            } else if (status === 'completed') {
+                icon.className = 'step-icon success';
+                icon.textContent = '✓';
+            } else if (status === 'error') {
+                icon.className = 'step-icon error';
+                icon.textContent = '✗';
+            }
+        }
+
+        // 重置步骤
+        function resetSteps() {
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById(`step${i}`);
+                const icon = document.getElementById(`step${i}Icon`);
+                step.className = 'progress-step';
+                icon.className = 'step-icon pending';
+                icon.textContent = i;
+            }
+        }
+
+        // 一键自动生成
+        async function autoGenerate() {
+            const keyword = document.getElementById('keyword').value.trim();
+            const asin = document.getElementById('asin').value.trim();
+            const tag = document.getElementById('tag').value.trim();
+            const btn = document.getElementById('generateBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const resultContainer = document.getElementById('resultContainer');
+
+            if (!keyword || !asin) {
+                alert('请填写关键词和 ASIN');
+                return;
+            }
+
+            if (asin.length !== 10) {
+                alert('ASIN 必须是10位字符');
+                return;
+            }
+
+            // 重置状态
+            btn.disabled = true;
+            btn.textContent = '⏳ 正在生成中...';
+            progressContainer.classList.add('show');
+            resultContainer.classList.remove('show');
+            resetSteps();
+
+            try {
+                // 步骤1: 启动浏览器
+                updateStep(1, 'active', '正在启动 Chrome 浏览器...');
+                await new Promise(r => setTimeout(r, 500));
+
+                // 步骤2: 搜索产品
+                updateStep(1, 'completed', '浏览器启动成功');
+                updateStep(2, 'active', `正在亚马逊搜索 "${keyword}"...`);
+
+                // 调用 API 获取真实链接
+                const response = await fetch(`${API_BASE_URL}/api/get-real-link`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keyword, asin, max_pages: 5 })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '获取失败');
+                }
+
+                const data = await response.json();
+
+                if (!data.found) {
+                    updateStep(2, 'error', data.message || '未找到产品');
+                    updateStep(3, 'error', '无法继续');
+                    updateStep(4, 'error', '无法继续');
+                    btn.disabled = false;
+                    btn.textContent = '🚀 一键自动生成链接';
+                    return;
+                }
+
+                // 步骤3: 获取排名和链接
+                updateStep(2, 'completed', `找到产品，第${data.page}页第${data.position}位`);
+                updateStep(3, 'active', data.has_dib ? '已获取真实链接（包含dib参数）' : '已获取真实链接');
+                await new Promise(r => setTimeout(r, 300));
+
+                // 步骤4: 生成推广链接
+                updateStep(3, 'completed', '真实链接获取成功');
+                updateStep(4, 'active', '正在添加联盟标签...');
+
+                // 在真实链接基础上添加联盟标签
+                let finalLink = data.full_link;
+                if (tag && !finalLink.includes('tag=')) {
+                    finalLink += (finalLink.includes('?') ? '&' : '?') + `tag=${tag}`;
+                }
+
+                generatedLink = finalLink;
+
+                updateStep(4, 'completed', '推广链接生成成功');
+
+                // 显示结果
+                await new Promise(r => setTimeout(r, 500));
+                document.getElementById('resultLink').textContent = finalLink;
+                document.getElementById('resultRank').textContent = data.rank;
+                document.getElementById('resultPage').textContent = `第${data.page}页`;
+                document.getElementById('resultPosition').textContent = `第${data.position}位`;
+                resultContainer.classList.add('show');
+
+                btn.disabled = false;
+                btn.textContent = '🚀 一键自动生成链接';
+
+            } catch (error) {
+                console.error('生成失败:', error);
+                
+                // 找出当前活跃的步骤并标记为错误
+                for (let i = 1; i <= 4; i++) {
+                    const step = document.getElementById(`step${i}`);
+                    if (step.classList.contains('active')) {
+                        updateStep(i, 'error', error.message);
+                        break;
+                    }
+                }
+                
+                alert('生成失败: ' + error.message);
+                btn.disabled = false;
+                btn.textContent = '🚀 一键自动生成链接';
+            }
+        }
+
+        // 复制结果
+        function copyResult() {
+            if (generatedLink) {
+                navigator.clipboard.writeText(generatedLink).then(() => {
+                    const btn = document.querySelector('.btn-success');
+                    btn.textContent = '✅ 已复制!';
+                    setTimeout(() => {
+                        btn.textContent = '📋 复制链接';
+                    }, 2000);
+                });
+            }
+        }
+
+        // 重置表单
+        function resetForm() {
+            document.getElementById('keyword').value = '';
+            document.getElementById('asin').value = '';
+            document.getElementById('progressContainer').classList.remove('show');
+            document.getElementById('resultContainer').classList.remove('show');
+            resetSteps();
+            document.getElementById('keyword').focus();
+        }
+
+        // 页面加载时检查 API
+        window.addEventListener('load', checkApiStatus);
+
+        // 回车键触发
+        document.getElementById('keyword').addEventListener('keypress', e => {
+            if (e.key === 'Enter') document.getElementById('asin').focus();
+        });
+        document.getElementById('asin').addEventListener('keypress', e => {
+            if (e.key === 'Enter') document.getElementById('tag').focus();
+        });
+        document.getElementById('tag').addEventListener('keypress', e => {
+            if (e.key === 'Enter') autoGenerate();
+        });
+    </script>
+</body>
+</html>

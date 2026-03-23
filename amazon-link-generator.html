@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亚马逊链接生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 700px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input[type="text"],
+        input[type="url"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus,
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        .mode-btn.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+            color: #667eea;
+        }
+        .mode-btn:hover {
+            border-color: #667eea;
+        }
+        .mode-content {
+            display: none;
+        }
+        .mode-content.active {
+            display: block;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .result-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .result-link {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            word-break: break-all;
+            font-size: 13px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .copy-btn:hover {
+            background: #5a6fd6;
+        }
+        .params-table {
+            margin-top: 15px;
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .params-table th,
+        .params-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .params-table th {
+            color: #666;
+            font-weight: 600;
+        }
+        .params-table td {
+            color: #333;
+        }
+        .param-value {
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading.show {
+            display: block;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛒 亚马逊链接生成器</h1>
+        <p class="subtitle">生成带追踪参数的亚马逊产品链接</p>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="switchMode('simple')">简单模式</button>
+            <button class="mode-btn" onclick="switchMode('search')">搜索模式</button>
+            <button class="mode-btn" onclick="switchMode('full')">完整模拟</button>
+            <button class="mode-btn" onclick="switchMode('custom')">自定义模式</button>
+        </div>
+
+        <!-- 简单模式 -->
+        <div id="simple-mode" class="mode-content active">
+            <div class="form-group">
+                <label for="simple-asin">ASIN</label>
+                <input type="text" id="simple-asin" placeholder="例如: B0GPVLJC3B">
+                <p class="hint">亚马逊产品唯一标识，10位字符</p>
+            </div>
+            <div class="form-group">
+                <label for="simple-tag">联盟标签 (可选)</label>
+                <input type="text" id="simple-tag" placeholder="例如: jackyfan5-20" value="jackyfan5-20">
+                <p class="hint">你的 Amazon Associates 追踪标签</p>
+            </div>
+        </div>
+
+        <!-- 搜索模式 -->
+        <div id="search-mode" class="mode-content">
+            <div class="form-group">
+                <label for="search-keyword">搜索关键词</label>
+                <input type="text" id="search-keyword" placeholder="例如: deer camera">
+                <p class="hint">用户在亚马逊搜索的词</p>
+            </div>
+            <div class="form-group">
+                <label for="search-asin">目标 ASIN</label>
+                <input type="text" id="search-asin" placeholder="例如: B0GPVLJC3B">
+                <p class="hint">要推广的产品 ASIN</p>
+            </div>
+            <div class="form-group">
+                <label for="search-tag">联盟标签 (可选)</label>
+                <input type="text" id="search-tag" placeholder="例如: jackyfan5-20" value="jackyfan5-20">
+            </div>
+            <div class="form-group">
+                <label for="search-rank">搜索排名</label>
+                <input type="text" id="search-rank" placeholder="例如: 8-198" value="1-1">
+                <p class="hint">格式: 页码-排名，例如 1-1 表示第1页第1位。<a href="amazon-rank-checker.html" target="_blank" style="color: #667eea;">不知道排名？点击查询 →</a></p>
+            </div>
+        </div>
+
+        <!-- 完整模拟模式 -->
+        <div id="full-mode" class="mode-content">
+            <div class="form-group">
+                <label for="full-title">产品标题</label>
+                <input type="text" id="full-title" placeholder="例如: Dargahou Trail Camera Monitoring Wildlife">
+                <p class="hint">完整产品标题，将转换为URL格式</p>
+            </div>
+            <div class="form-group">
+                <label for="full-asin">ASIN</label>
+                <input type="text" id="full-asin" placeholder="例如: B0GPVLJC3B">
+            </div>
+            <div class="form-group">
+                <label for="full-keyword">搜索关键词</label>
+                <input type="text" id="full-keyword" placeholder="例如: deer cameras with night vision">
+                <p class="hint">用户在亚马逊搜索的关键词</p>
+            </div>
+            <div class="form-group">
+                <label for="full-rank">搜索排名</label>
+                <input type="text" id="full-rank" placeholder="例如: 8-198" value="1-1">
+                <p class="hint" style="font-size: 12px; color: #999; margin-top: 5px;"><a href="amazon-rank-checker.html" target="_blank" style="color: #667eea;">不知道排名？点击查询 →</a></p>
+            </div>
+            <div class="form-group">
+                <label for="full-tag">联盟标签 (可选)</label>
+                <input type="text" id="full-tag" placeholder="例如: jackyfan5-20" value="jackyfan5-20">
+            </div>
+            <div style="background: #fff3cd; padding: 12px; border-radius: 8px; font-size: 12px; color: #856404;">
+                <strong>说明：</strong>此模式生成最接近真实亚马逊搜索链接的格式，包含 sprefix、ref、sr、xpid、crid 等所有可模拟参数。
+                <br><strong>注意：</strong>dib（加密数据块）是亚马逊服务器生成的，无法模拟。
+            </div>
+        </div>
+
+        <!-- 自定义模式 -->
+        <div id="custom-mode" class="mode-content">
+            <div class="form-group">
+                <label for="custom-asin">ASIN</label>
+                <input type="text" id="custom-asin" placeholder="例如: B0GPVLJC3B">
+            </div>
+            <div class="form-group">
+                <label for="custom-title">产品标题</label>
+                <input type="text" id="custom-title" placeholder="例如: Trail Camera Night Vision">
+                <p class="hint">将自动转换为 URL 友好格式</p>
+            </div>
+            <div class="form-group">
+                <label for="custom-keywords">关键词</label>
+                <input type="text" id="custom-keywords" placeholder="例如: deer camera">
+            </div>
+            <div class="form-group">
+                <label for="custom-tag">联盟标签 (可选)</label>
+                <input type="text" id="custom-tag" placeholder="例如: jackyfan5-20" value="jackyfan5-20">
+            </div>
+            <div class="form-group">
+                <label for="custom-crid">CRID (可选)</label>
+                <input type="text" id="custom-crid" placeholder="例如: 1E1S2RS4CSJD7">
+                <p class="hint">亚马逊搜索请求 ID，留空则自动生成</p>
+            </div>
+        </div>
+
+        <button class="btn" onclick="generateLink()">生成链接</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在生成链接...</p>
+        </div>
+
+        <div class="result" id="result">
+            <div class="result-title">生成的链接：</div>
+            <div class="result-link" id="result-link"></div>
+            <button class="copy-btn" onclick="copyLink()">复制链接</button>
+            <button class="copy-btn" onclick="fetchRealLink()" style="background: #28a745; margin-top: 10px;">🚀 获取真实链接（带dib）</button>
+            <div id="real-link-result" style="margin-top: 15px; display: none;">
+                <div style="background: #d4edda; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="font-weight: 600; color: #155724; margin-bottom: 5px;">✅ 真实链接（从亚马逊获取）：</div>
+                    <div id="real-link-text" style="word-break: break-all; font-size: 12px; color: #155724;"></div>
+                </div>
+                <button class="copy-btn" onclick="copyRealLink()" style="background: #28a745;">复制真实链接</button>
+            </div>
+            <div id="api-status" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
+            
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>参数</th>
+                        <th>值</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody id="params-tbody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'simple';
+
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 更新内容显示
+            document.querySelectorAll('.mode-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(mode + '-mode').classList.add('active');
+            
+            // 隐藏结果
+            document.getElementById('result').classList.remove('show');
+        }
+
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function generateTimestamp() {
+            return Math.floor(Date.now() / 1000).toString();
+        }
+
+        function urlFriendlyTitle(title) {
+            return title
+                .replace(/[^a-zA-Z0-9\s-]/g, '')
+                .trim()
+                .replace(/\s+/g, '-')
+                .substring(0, 80);
+        }
+
+        function generateLink() {
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            
+            loading.classList.add('show');
+            result.classList.remove('show');
+            
+            setTimeout(() => {
+                let link = '';
+                let params = [];
+                
+                if (currentMode === 'simple') {
+                    const asin = document.getElementById('simple-asin').value.trim();
+                    const tag = document.getElementById('simple-tag').value.trim();
+                    
+                    if (!asin) {
+                        alert('请输入 ASIN');
+                        loading.classList.remove('show');
+                        return;
+                    }
+                    
+                    link = `https://www.amazon.com/dp/${asin}`;
+                    if (tag) {
+                        link += `?tag=${tag}`;
+                        params.push({name: 'tag', value: tag, desc: '联盟追踪标签'});
+                    }
+                    
+                } else if (currentMode === 'search') {
+                    const keyword = document.getElementById('search-keyword').value.trim();
+                    const asin = document.getElementById('search-asin').value.trim();
+                    const tag = document.getElementById('search-tag').value.trim();
+                    const rank = document.getElementById('search-rank').value.trim() || '1-1';
+                    
+                    if (!asin) {
+                        alert('请输入 ASIN');
+                        loading.classList.remove('show');
+                        return;
+                    }
+                    
+                    // 生成所有参数（模拟链接1的完整格式）
+                    const crid = generateRandomString(16);
+                    const xpid = generateRandomString(12) + generateRandomString(4);
+                    const qid = generateTimestamp();
+                    const encodedKeyword = encodeURIComponent(keyword || 'product');
+                    const sprefix = encodeURIComponent(keyword || 'product') + '%2Caps%2C145';
+                    
+                    // 构建链接（完全模仿链接1的格式）
+                    // 格式: /dp/ASIN/ref=sr_&sr=排名&xpid=xxx?crid=xxx&dib=...&dib_tag=se&sprefix=...&keywords=...&qid=...
+                    link = `https://www.amazon.com/dp/${asin}/ref=sr_&sr=${rank}&xpid=${xpid}?crid=${crid}&sprefix=${sprefix}&keywords=${encodedKeyword}&qid=${qid}`;
+                    
+                    if (tag) {
+                        link += `&tag=${tag}`;
+                        params.push({name: 'tag', value: tag, desc: '联盟追踪标签'});
+                    }
+                    
+                    params.push(
+                        {name: 'crid', value: crid, desc: '搜索请求ID'},
+                        {name: 'xpid', value: xpid, desc: '会话追踪ID'},
+                        {name: 'sr', value: rank, desc: '搜索排名'},
+                        {name: 'sprefix', value: sprefix, desc: '搜索前缀'},
+                        {name: 'keywords', value: keyword || 'product', desc: '搜索关键词'},
+                        {name: 'qid', value: qid, desc: '时间戳'}
+                    );
+                    
+                } else if (currentMode === 'full') {
+                    // 完整模拟模式 - 最接近链接1的格式
+                    const title = document.getElementById('full-title').value.trim();
+                    const asin = document.getElementById('full-asin').value.trim();
+                    const keyword = document.getElementById('full-keyword').value.trim();
+                    const rank = document.getElementById('full-rank').value.trim() || '1-1';
+                    const tag = document.getElementById('full-tag').value.trim();
+                    
+                    if (!asin) {
+                        alert('请输入 ASIN');
+                        loading.classList.remove('show');
+                        return;
+                    }
+                    
+                    // 生成所有参数（完全模拟链接1格式）
+                    const crid = generateRandomString(16);
+                    const xpid = generateRandomString(12) + generateRandomString(4);
+                    const qid = generateTimestamp();
+                    const encodedKeyword = encodeURIComponent(keyword || 'product');
+                    const sprefix = encodeURIComponent(keyword || 'product') + '%2Caps%2C145';
+                    const urlTitle = title ? urlFriendlyTitle(title) + '/' : '';
+                    
+                    // 构建完整链接（模仿链接1的精确格式）
+                    // 格式: /产品标题/dp/ASIN/ref=sr_&sr=排名&xpid=xxx?crid=xxx&sprefix=...&keywords=...&qid=...
+                    link = `https://www.amazon.com/${urlTitle}dp/${asin}/ref=sr_&sr=${rank}&xpid=${xpid}?crid=${crid}&sprefix=${sprefix}&keywords=${encodedKeyword}&qid=${qid}`;
+                    
+                    if (tag) {
+                        link += `&tag=${tag}`;
+                        params.push({name: 'tag', value: tag, desc: '联盟追踪标签'});
+                    }
+                    
+                    params.push(
+                        {name: 'crid', value: crid, desc: '搜索请求ID (16位随机)'},
+                        {name: 'xpid', value: xpid, desc: '会话追踪ID (16位随机)'},
+                        {name: 'sr', value: rank, desc: '搜索排名 (页码-位次)'},
+                        {name: 'sprefix', value: sprefix, desc: '搜索前缀 (关键词+后缀)'},
+                        {name: 'keywords', value: keyword || 'product', desc: '搜索关键词'},
+                        {name: 'qid', value: qid, desc: 'Unix时间戳'},
+                        {name: 'ref', value: 'sr_', desc: '来源标识 (Search Results)'}
+                    );
+                    
+                    if (title) {
+                        params.push({name: 'title', value: urlTitle, desc: '产品标题URL格式'});
+                    }
+                    
+                } else if (currentMode === 'custom') {
+                    const asin = document.getElementById('custom-asin').value.trim();
+                    const title = document.getElementById('custom-title').value.trim();
+                    const keywords = document.getElementById('custom-keywords').value.trim();
+                    const tag = document.getElementById('custom-tag').value.trim();
+                    const customCrid = document.getElementById('custom-crid').value.trim();
+                    
+                    if (!asin) {
+                        alert('请输入 ASIN');
+                        loading.classList.remove('show');
+                        return;
+                    }
+                    
+                    const crid = customCrid || generateRandomString(16);
+                    const xpid = generateRandomString(12) + generateRandomString(4);
+                    const qid = generateTimestamp();
+                    const encodedKeywords = encodeURIComponent(keywords || 'product');
+                    const sprefix = encodeURIComponent(keywords || 'product') + '%2Caps%2C145';
+                    
+                    let urlTitle = '';
+                    if (title) {
+                        urlTitle = urlFriendlyTitle(title) + '/';
+                    }
+                    
+                    link = `https://www.amazon.com/${urlTitle}dp/${asin}/ref=sr_&sr=1-1&xpid=${xpid}?crid=${crid}&sprefix=${sprefix}&keywords=${encodedKeywords}&qid=${qid}`;
+                    
+                    if (tag) {
+                        link += `&tag=${tag}`;
+                        params.push({name: 'tag', value: tag, desc: '联盟追踪标签'});
+                    }
+                    
+                    params.push(
+                        {name: 'crid', value: crid, desc: '搜索请求ID'},
+                        {name: 'xpid', value: xpid, desc: '会话追踪ID'},
+                        {name: 'sprefix', value: sprefix, desc: '搜索前缀'},
+                        {name: 'keywords', value: keywords || 'product', desc: '搜索关键词'},
+                        {name: 'qid', value: qid, desc: '时间戳'}
+                    );
+                }
+                
+                document.getElementById('result-link').textContent = link;
+                
+                // 填充参数表格
+                const tbody = document.getElementById('params-tbody');
+                tbody.innerHTML = params.map(p => `
+                    <tr>
+                        <td><code>${p.name}</code></td>
+                        <td><span class="param-value">${p.value.length > 30 ? p.value.substring(0, 30) + '...' : p.value}</span></td>
+                        <td>${p.desc}</td>
+                    </tr>
+                `).join('');
+                
+                loading.classList.remove('show');
+                result.classList.add('show');
+                
+            }, 500);
+        }
+
+        function copyLink() {
+            const link = document.getElementById('result-link').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = '已复制!';
+                setTimeout(() => {
+                    btn.textContent = '复制链接';
+                }, 2000);
+            });
+        }
+
+        // API 配置
+        const API_BASE_URL = 'http://localhost:5000';
+
+        // 获取真实链接（调用后端 API）
+        async function fetchRealLink() {
+            const statusDiv = document.getElementById('api-status');
+            const resultDiv = document.getElementById('real-link-result');
+            const linkText = document.getElementById('real-link-text');
+            
+            // 获取当前模式的输入值
+            let keyword, asin;
+            
+            if (currentMode === 'search') {
+                keyword = document.getElementById('search-keyword').value.trim();
+                asin = document.getElementById('search-asin').value.trim();
+            } else if (currentMode === 'full') {
+                keyword = document.getElementById('full-keyword').value.trim();
+                asin = document.getElementById('full-asin').value.trim();
+            } else {
+                alert('请在"搜索模式"或"完整模拟"模式下使用此功能');
+                return;
+            }
+            
+            if (!keyword || !asin) {
+                alert('请先填写关键词和 ASIN');
+                return;
+            }
+            
+            statusDiv.textContent = '🔄 正在连接后端服务...';
+            resultDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/get-real-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        keyword: keyword,
+                        asin: asin,
+                        max_pages: 5
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || `HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.found) {
+                    linkText.textContent = data.full_link;
+                    resultDiv.style.display = 'block';
+                    statusDiv.textContent = `✅ 找到产品！排名: ${data.rank}${data.has_dib ? ' (包含dib参数)' : ''}`;
+                    
+                    // 自动填充排名到输入框
+                    if (currentMode === 'search') {
+                        document.getElementById('search-rank').value = data.rank;
+                    } else if (currentMode === 'full') {
+                        document.getElementById('full-rank').value = data.rank;
+                    }
+                } else {
+                    statusDiv.textContent = `❌ ${data.message || '未找到产品'}`;
+                }
+                
+            } catch (error) {
+                console.error('API 调用失败:', error);
+                statusDiv.innerHTML = `❌ 错误: ${error.message}<br><br>
+                    <strong>解决方法：</strong><br>
+                    1. 确保后端服务已启动：<code>python amazon_api_server.py</code><br>
+                    2. 检查服务是否在 http://localhost:5000 运行<br>
+                    3. 如果跨域问题，请使用 CORS 插件或配置浏览器`;
+            }
+        }
+
+        // 复制真实链接
+        function copyRealLink() {
+            const link = document.getElementById('real-link-text').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                const btn = document.querySelectorAll('.copy-btn')[1];
+                const originalText = btn.textContent;
+                btn.textContent = '已复制!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        }
+
+        // 检查后端服务状态
+        async function checkApiStatus() {
+            const statusDiv = document.getElementById('api-status');
+            try {
+                const response = await fetch(`${API_BASE_URL}/`, { method: 'GET' });
+                if (response.ok) {
+                    statusDiv.innerHTML = '✅ 后端服务已连接';
+                    statusDiv.style.color = '#28a745';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '⚠️ 后端服务未启动，真实链接功能不可用<br>请运行: <code>python amazon_api_server.py</code>';
+                statusDiv.style.color = '#856404';
+            }
+        }
+
+        // 页面加载时检查 API 状态
+        window.addEventListener('load', checkApiStatus);
+    </script>
+</body>
+</html>
