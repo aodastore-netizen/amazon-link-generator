@@ -58,8 +58,17 @@ jobs:
         pyinstaller --clean amazon_link_generator.spec
         ls dist/
     
+    - name: Copy install wizard
+      run: |
+        copy "安装向导.bat" "dist\安装向导.bat"
+        ls dist/
+    
+    - name: Create ZIP package
+      run: |
+        Compress-Archive -Path "dist\*" -DestinationPath "亚马逊链接生成器-Windows.zip"
+    
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: Windows-app
-        path: dist/亚马逊链接生成器.exe
+        path: 亚马逊链接生成器-Windows.zip
