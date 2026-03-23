@@ -7,7 +7,10 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['webview', 'requests', 'bs4', 'urllib', 're', 'time', 'random', 'json'],
+    hiddenimports=[
+        'webview', 'requests', 'bs4', 'urllib', 're', 'time', 'random', 'json',
+        'playwright', 'playwright.sync_api', 'playwright._impl',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
