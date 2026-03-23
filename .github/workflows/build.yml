@@ -53,7 +53,7 @@ jobs:
       run: playwright install chromium
     
     - name: Build Windows exe
-      run: pyinstaller --onefile --windowed --name amazon_link_generator amazon_link_generator_desktop.py
+      run: pyinstaller --clean amazon_link_generator.spec
     
     - name: Create install script
       run: |

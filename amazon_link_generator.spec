@@ -1,16 +1,27 @@
 # -*- mode: python ; coding: utf-8 -*-
 import sys
-from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
-from PyInstaller.building.datastruct import Tree
+import os
 
 block_cipher = None
 
-# 分析主程序
+# 获取 Playwright 浏览器路径
+try:
+    import playwright
+    playwright_path = os.path.dirname(playwright.__file__)
+    browser_path = os.path.join(playwright_path, 'driver', 'package', '.local-browsers')
+except:
+    browser_path = None
+
+# 数据文件
+added_files = []
+if browser_path and os.path.exists(browser_path):
+    added_files.append((browser_path, 'playwright_browsers'))
+
 a = Analysis(
     ['amazon_link_generator_desktop.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=added_files,
     hiddenimports=[
         'webview', 'webview.platforms.winforms',
         'requests', 'bs4', 'urllib', 're', 'time', 'random', 'json',
@@ -29,7 +40,6 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# 单文件模式
 exe = EXE(
     pyz,
     a.scripts,
@@ -37,7 +47,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='亚马逊链接生成器',
+    name='amazon_link_generator',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
