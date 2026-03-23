@@ -207,7 +207,17 @@ class AmazonAPI:
             return {
                 'success': False,
                 'error': 'Playwright 未安装',
-                'install_command': '请安装依赖: pip install playwright && playwright install chromium'
+                'install_guide': {
+                    'title': '需要安装 Playwright',
+                    'steps': [
+                        '1. 安装 Python（https://www.python.org/downloads/）',
+                        '2. 打开命令提示符（CMD）',
+                        '3. 运行: pip install playwright',
+                        '4. 运行: playwright install chromium',
+                        '5. 重新启动本软件'
+                    ],
+                    'note': '或者下载完整版（包含所有依赖）'
+                }
             }
         
         try:

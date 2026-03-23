@@ -52,8 +52,33 @@ jobs:
     - name: Build Windows exe
       run: pyinstaller --onefile --windowed --name amazon_link_generator amazon_link_generator_desktop.py
     
-    - name: Upload artifact
+    - name: Create install script
+      run: |
+        echo "@echo off" > dist\install_playwright.bat
+        echo "chcp 65001 >nul" >> dist\install_playwright.bat
+        echo "echo ==========================================" >> dist\install_playwright.bat
+        echo "echo  亚马逊链接生成器 - Playwright 安装向导" >> dist\install_playwright.bat
+        echo "echo ==========================================" >> dist\install_playwright.bat
+        echo "echo." >> dist\install_playwright.bat
+        echo "echo 正在安装 Playwright..." >> dist\install_playwright.bat
+        echo "pip install playwright" >> dist\install_playwright.bat
+        echo "echo." >> dist\install_playwright.bat
+        echo "echo 正在下载 Chromium 浏览器（约100MB）..." >> dist\install_playwright.bat
+        echo "playwright install chromium" >> dist\install_playwright.bat
+        echo "echo." >> dist\install_playwright.bat
+        echo "echo 安装完成！请重新启动软件。" >> dist\install_playwright.bat
+        echo "pause" >> dist\install_playwright.bat
+    
+    - name: Upload exe
       uses: actions/upload-artifact@v4
       with:
-        name: Windows-app
+        name: Windows-exe
         path: dist/amazon_link_generator.exe
+    
+    - name: Upload with install script
+      uses: actions/upload-artifact@v4
+      with:
+        name: Windows-with-installer
+        path: |
+          dist/amazon_link_generator.exe
+          dist/install_playwright.bat
