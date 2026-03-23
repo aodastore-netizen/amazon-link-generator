@@ -58,8 +58,12 @@ class AmazonAPI:
         """检查 Playwright 是否可用"""
         try:
             from playwright.sync_api import sync_playwright
+            # 尝试启动浏览器验证
+            with sync_playwright() as p:
+                browser = p.chromium.launch()
+                browser.close()
             return True
-        except ImportError:
+        except Exception:
             return False
     
     def _get_playwright_browsers_path(self) -> str:
