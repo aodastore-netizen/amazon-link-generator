@@ -23,14 +23,10 @@ jobs:
         playwright install chromium
     
     - name: Build macOS app
-      run: |
-        python setup.py py2app
-        ls -la dist/
+      run: python setup.py py2app
     
     - name: Create DMG
-      run: |
-        hdiutil create -volname "亚马逊链接生成器" -srcfolder dist/亚马逊链接生成器.app -ov -format UDZO "亚马逊链接生成器-macOS.dmg"
-        ls -la *.dmg
+      run: hdiutil create -volname "亚马逊链接生成器" -srcfolder dist/亚马逊链接生成器.app -ov -format UDZO "亚马逊链接生成器-macOS.dmg"
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -54,21 +50,10 @@ jobs:
         pip install pyinstaller pywebview requests beautifulsoup4
     
     - name: Build Windows exe
-      run: |
-        pyinstaller --clean amazon_link_generator.spec
-        ls dist/
-    
-    - name: Copy install wizard
-      run: |
-        copy install_wizard.bat dist\
-        ls dist\
-    
-    - name: Create ZIP package
-      run: |
-        Compress-Archive -Path dist\* -DestinationPath amazon-link-generator-windows.zip
+      run: pyinstaller --onefile --windowed --name amazon_link_generator amazon_link_generator_desktop.py
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: Windows-app
-        path: amazon-link-generator-windows.zip
+        path: dist/amazon_link_generator.exe
