@@ -1,20 +1,26 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
+from PyInstaller.building.datastruct import Tree
 
 block_cipher = None
 
+# 分析主程序
 a = Analysis(
     ['amazon_link_generator_desktop.py'],
     pathex=[],
     binaries=[],
     datas=[],
     hiddenimports=[
-        'webview', 'requests', 'bs4', 'urllib', 're', 'time', 'random', 'json',
+        'webview', 'webview.platforms.winforms',
+        'requests', 'bs4', 'urllib', 're', 'time', 'random', 'json',
         'playwright', 'playwright.sync_api', 'playwright._impl',
+        'playwright._impl._driver', 'playwright._impl._browser_type',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['tkinter', 'matplotlib', 'numpy', 'pandas'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -23,6 +29,7 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# 单文件模式
 exe = EXE(
     pyz,
     a.scripts,

@@ -38,7 +38,7 @@ jobs:
         name: macOS-app
         path: 亚马逊链接生成器-macOS.dmg
 
-  build-windows:
+  build-windows-full:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
@@ -52,22 +52,34 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller pywebview requests beautifulsoup4 playwright
-        playwright install chromium
     
-    - name: Build Windows exe
+    - name: Install Chromium
       run: |
-        pyinstaller --clean amazon_link_generator.spec
+        python -m playwright install chromium
+    
+    - name: Build Windows exe (full)
+      run: |
+        pyinstaller --clean --onefile amazon_link_generator.spec
         ls dist/
     
-    - name: Copy install script
+    - name: Copy Playwright browsers
       run: |
-        copy "安装依赖.bat" "dist\安装依赖.bat"
+        $playwrightPath = python -c "import playwright; print(playwright.__file__)"
+        $browserPath = Join-Path (Split-Path $playwrightPath) "driver\package\.local-browsers"
+        if (Test-Path $browserPath) {
+          Copy-Item -Path $browserPath -Destination "dist\browsers" -Recurse -Force
+          Write-Host "Browsers copied successfully"
+        } else {
+          Write-Host "Browser path not found at $browserPath"
+        }
         ls dist/
+    
+    - name: Create ZIP with browsers
+      run: |
+        Compress-Archive -Path "dist\*" -DestinationPath "亚马逊链接生成器-Windows-完整版.zip"
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Windows-app
-        path: |
-          dist/亚马逊链接生成器.exe
-          dist/安装依赖.bat
+        name: Windows-app-full
+        path: 亚马逊链接生成器-Windows-完整版.zip

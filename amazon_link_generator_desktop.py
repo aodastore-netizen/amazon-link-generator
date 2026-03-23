@@ -58,34 +58,20 @@ class AmazonAPI:
         """检查 Playwright 是否可用"""
         try:
             from playwright.sync_api import sync_playwright
-            # 检查浏览器是否已安装
-            from playwright._impl._driver import compute_driver_executable
-            compute_driver_executable()
             return True
         except ImportError:
             return False
-        except Exception:
-            # 浏览器未安装
-            return False
     
-    def _install_playwright_browsers(self) -> dict:
-        """自动安装 Playwright 浏览器"""
-        import subprocess
-        try:
-            result = subprocess.run(
-                [sys.executable, "-m", "playwright", "install", "chromium"],
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
-            if result.returncode == 0:
-                return {'success': True, 'message': '浏览器安装成功'}
-            else:
-                return {'success': False, 'error': result.stderr}
-        except subprocess.TimeoutExpired:
-            return {'success': False, 'error': '安装超时，请检查网络连接'}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
+    def _get_playwright_browsers_path(self) -> str:
+        """获取 Playwright 浏览器路径（支持打包后的环境）"""
+        # 检查是否在打包环境中
+        if getattr(sys, 'frozen', False):
+            # 运行在 PyInstaller 打包环境中
+            base_path = sys._MEIPASS
+            browser_path = os.path.join(base_path, 'browsers')
+            if os.path.exists(browser_path):
+                return browser_path
+        return None
     
     def generate_link(self, mode: str, data: dict) -> dict:
         """生成推广链接"""
@@ -218,21 +204,11 @@ class AmazonAPI:
     def get_real_link(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
         """获取真实链接（使用 Playwright）"""
         if not self.playwright_available:
-            # 尝试自动安装浏览器
-            install_result = self._install_playwright_browsers()
-            if not install_result['success']:
-                return {
-                    'success': False,
-                    'error': f'Playwright 浏览器安装失败: {install_result["error"]}',
-                    'install_command': '请手动运行: pip install playwright && playwright install chromium'
-                }
-            # 重新检查
-            self.playwright_available = self._check_playwright()
-            if not self.playwright_available:
-                return {
-                    'success': False,
-                    'error': '浏览器安装后仍无法使用，请重启应用'
-                }
+            return {
+                'success': False,
+                'error': 'Playwright 未安装',
+                'install_command': '请安装依赖: pip install playwright && playwright install chromium'
+            }
         
         try:
             from playwright.sync_api import sync_playwright
