@@ -59,8 +59,15 @@ jobs:
         pyinstaller --clean amazon_link_generator.spec
         ls dist/
     
+    - name: Copy install script
+      run: |
+        copy "安装依赖.bat" "dist\安装依赖.bat"
+        ls dist/
+    
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: Windows-app
-        path: dist/亚马逊链接生成器.exe
+        path: |
+          dist/亚马逊链接生成器.exe
+          dist/安装依赖.bat
