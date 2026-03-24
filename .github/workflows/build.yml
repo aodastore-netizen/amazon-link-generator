@@ -56,21 +56,22 @@ jobs:
       run: pyinstaller --clean amazon_link_generator.spec
     
     - name: Create install script
+      shell: cmd
       run: |
-        echo "@echo off" > dist\install_playwright.bat
-        echo "chcp 65001 >nul" >> dist\install_playwright.bat
-        echo "echo ==========================================" >> dist\install_playwright.bat
-        echo "echo  亚马逊链接生成器 - Playwright 安装向导" >> dist\install_playwright.bat
-        echo "echo ==========================================" >> dist\install_playwright.bat
-        echo "echo." >> dist\install_playwright.bat
-        echo "echo 正在安装 Playwright..." >> dist\install_playwright.bat
-        echo "pip install playwright" >> dist\install_playwright.bat
-        echo "echo." >> dist\install_playwright.bat
-        echo "echo 正在下载 Chromium 浏览器（约100MB）..." >> dist\install_playwright.bat
-        echo "playwright install chromium" >> dist\install_playwright.bat
-        echo "echo." >> dist\install_playwright.bat
-        echo "echo 安装完成！请重新启动软件。" >> dist\install_playwright.bat
-        echo "pause" >> dist\install_playwright.bat
+        echo @echo off > dist\install_playwright.bat
+        echo chcp 65001 ^>nul >> dist\install_playwright.bat
+        echo echo ========================================== >> dist\install_playwright.bat
+        echo echo  亚马逊链接生成器 - Playwright 安装向导 >> dist\install_playwright.bat
+        echo echo ========================================== >> dist\install_playwright.bat
+        echo echo. >> dist\install_playwright.bat
+        echo echo 正在安装 Playwright... >> dist\install_playwright.bat
+        echo pip install playwright >> dist\install_playwright.bat
+        echo echo. >> dist\install_playwright.bat
+        echo echo 正在下载 Chromium 浏览器（约100MB）... >> dist\install_playwright.bat
+        echo playwright install chromium >> dist\install_playwright.bat
+        echo echo. >> dist\install_playwright.bat
+        echo echo 安装完成！请重新启动软件。 >> dist\install_playwright.bat
+        echo pause >> dist\install_playwright.bat
     
     - name: Upload exe
       uses: actions/upload-artifact@v4
