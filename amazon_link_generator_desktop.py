@@ -263,8 +263,8 @@ class AmazonAPI:
             'needs_browser': True
         }
     
-    def get_real_link_direct(self, asin: str) -> dict:
-        """Get real link by directly visiting product page (no search needed)"""
+    def get_real_link_with_search(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
+        """Get real link by searching and clicking product (to get dib parameter)"""
         if not self.playwright_available:
             return {
                 'success': False,
@@ -303,78 +303,88 @@ class AmazonAPI:
             
             page = context.new_page()
             
-            # Directly visit product page
-            product_url = f"https://www.amazon.com/dp/{asin}"
-            page.goto(product_url, timeout=60000, wait_until='domcontentloaded')
-            time.sleep(3)  # Wait for JavaScript to generate dib
+            # Step 1: Search for the product
+            page.goto('https://www.amazon.com', timeout=60000)
+            time.sleep(2)
             
-            # Get the final URL (should have dib parameter)
-            final_url = page.url
-            parsed = urlparse(final_url)
-            params = parse_qs(parsed.query)
+            # Fill search box and search
+            page.fill('#twotabsearchtextbox', keyword)
+            page.click('#nav-search-submit-button')
+            page.wait_for_load_state('domcontentloaded')
+            time.sleep(3)
+            
+            # Step 2: Find and click the product
+            for page_num in range(1, max_pages + 1):
+                # Find all product containers
+                products = page.query_selector_all('[data-component-type="s-search-result"]')
+                
+                for position, product in enumerate(products, start=1):
+                    # Find the link within this product
+                    link_elem = product.query_selector('h2 a')
+                    if not link_elem:
+                        continue
+                    
+                    href = link_elem.get_attribute('href')
+                    if not href:
+                        continue
+                    
+                    found_asin = extract_asin_from_url(href)
+                    if found_asin == asin:
+                        # Click the product link to get the real URL with dib
+                        link_elem.click()
+                        page.wait_for_load_state('domcontentloaded', timeout=30000)
+                        time.sleep(3)  # Wait for JavaScript to generate dib
+                        
+                        # Get the current URL (should have dib parameter)
+                        final_url = page.url
+                        parsed = urlparse(final_url)
+                        params = parse_qs(parsed.query)
+                        
+                        browser.close()
+                        playwright.stop()
+                        
+                        return {
+                            'success': True,
+                            'found': True,
+                            'full_link': final_url,
+                            'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                            'rank': f"{page_num}-{position}",
+                            'page': page_num,
+                            'position': position,
+                            'has_dib': 'dib' in params,
+                            'keyword': keyword,
+                            'asin': asin,
+                            'method': 'playwright'
+                        }
+                
+                # Go to next page if not found
+                if page_num < max_pages:
+                    next_btn = page.query_selector('a.s-pagination-next')
+                    if next_btn:
+                        next_btn.click()
+                        page.wait_for_load_state('domcontentloaded')
+                        time.sleep(2)
+                    else:
+                        break
             
             browser.close()
             playwright.stop()
             
             return {
                 'success': True,
-                'found': True,
-                'full_link': final_url,
-                'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
-                'has_dib': 'dib' in params,
+                'found': False,
+                'keyword': keyword,
                 'asin': asin,
-                'method': 'direct',
-                'note': 'Direct product page access'
+                'message': f'Product not found in first {max_pages} pages'
             }
             
         except Exception as e:
-            return {'success': False, 'error': f'Direct access failed: {str(e)}'}
+            return {'success': False, 'error': f'Browser automation failed: {str(e)}'}
     
     def get_real_link(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
         """Get real link with dib parameter using Playwright browser"""
-        # Step 1: First check rank using requests
-        rank_result = self.check_rank_simple(keyword, asin, max_pages)
-        rank_info = None
-        if rank_result.get('success') and rank_result.get('found'):
-            rank_info = {
-                'rank': rank_result.get('rank'),
-                'page': rank_result.get('page'),
-                'position': rank_result.get('position')
-            }
-        
-        # Step 2: Use Playwright to get real link with dib
-        if not self.playwright_available:
-            return {
-                'success': False,
-                'error': 'Playwright not installed',
-                'detail': 'Getting real link with dib requires Playwright browser',
-                'install_guide': {
-                    'title': '需要安装 Playwright',
-                    'steps': [
-                        '1. 安装 Python（https://www.python.org/downloads/）',
-                        '2. 打开命令提示符（CMD）',
-                        '3. 运行: pip install playwright',
-                        '4. 运行: playwright install chromium',
-                        '5. 重新启动本软件'
-                    ]
-                }
-            }
-        
-        direct_result = self.get_real_link_direct(asin)
-        if direct_result.get('success') and direct_result.get('found'):
-            # Add rank info if we found it earlier
-            if rank_info:
-                direct_result['rank'] = rank_info['rank']
-                direct_result['page'] = rank_info['page']
-                direct_result['position'] = rank_info['position']
-            else:
-                direct_result['rank'] = 'N/A (not found in search)'
-                direct_result['page'] = 0
-                direct_result['position'] = 0
-            return direct_result
-        
-        # Return error if direct access failed
-        return direct_result
+        # Use Playwright to search and click product (dib is generated when clicking from search)
+        return self.get_real_link_with_search(keyword, asin, max_pages)
 
 
 # ============== 前端 HTML ==============
