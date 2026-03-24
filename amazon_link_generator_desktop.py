@@ -315,12 +315,29 @@ class AmazonAPI:
             
             # Step 2: Find and click the product
             for page_num in range(1, max_pages + 1):
+                # Wait for products to load
+                try:
+                    page.wait_for_selector('[data-component-type="s-search-result"]', timeout=10000)
+                except:
+                    return {
+                        'success': False,
+                        'error': f'No products loaded on page {page_num}',
+                        'detail': 'Amazon page structure may have changed or search failed'
+                    }
+                
                 # Find all product containers
                 products = page.query_selector_all('[data-component-type="s-search-result"]')
                 
+                if not products:
+                    return {
+                        'success': False,
+                        'error': f'No products found on page {page_num}',
+                        'detail': 'Product selector may not match Amazon\'s current structure'
+                    }
+                
                 for position, product in enumerate(products, start=1):
-                    # Find the link within this product
-                    link_elem = product.query_selector('h2 a')
+                    # Find the link within this product - try multiple selectors
+                    link_elem = product.query_selector('h2 a') or product.query_selector('a[href*="/dp/"]') or product.query_selector('a[href*="/gp/product/"]')
                     if not link_elem:
                         continue
                     
@@ -329,41 +346,60 @@ class AmazonAPI:
                         continue
                     
                     found_asin = extract_asin_from_url(href)
+                    
+                    # Debug info
+                    print(f"Checking product {position}: ASIN={found_asin}, href={href[:50]}...")
+                    
                     if found_asin == asin:
+                        print(f"Found matching ASIN! Clicking...")
                         # Click the product link to get the real URL with dib
-                        link_elem.click()
-                        page.wait_for_load_state('domcontentloaded', timeout=30000)
-                        time.sleep(3)  # Wait for JavaScript to generate dib
-                        
-                        # Get the current URL (should have dib parameter)
-                        final_url = page.url
-                        parsed = urlparse(final_url)
-                        params = parse_qs(parsed.query)
-                        
-                        browser.close()
-                        playwright.stop()
-                        
-                        return {
-                            'success': True,
-                            'found': True,
-                            'full_link': final_url,
-                            'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
-                            'rank': f"{page_num}-{position}",
-                            'page': page_num,
-                            'position': position,
-                            'has_dib': 'dib' in params,
-                            'keyword': keyword,
-                            'asin': asin,
-                            'method': 'playwright'
-                        }
+                        try:
+                            link_elem.click()
+                            page.wait_for_load_state('domcontentloaded', timeout=30000)
+                            time.sleep(3)  # Wait for JavaScript to generate dib
+                            
+                            # Get the current URL (should have dib parameter)
+                            final_url = page.url
+                            parsed = urlparse(final_url)
+                            params = parse_qs(parsed.query)
+                            
+                            browser.close()
+                            playwright.stop()
+                            
+                            return {
+                                'success': True,
+                                'found': True,
+                                'full_link': final_url,
+                                'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                                'rank': f"{page_num}-{position}",
+                                'page': page_num,
+                                'position': position,
+                                'has_dib': 'dib' in params,
+                                'keyword': keyword,
+                                'asin': asin,
+                                'method': 'playwright'
+                            }
+                        except Exception as click_error:
+                            return {
+                                'success': False,
+                                'error': f'Failed to click product: {str(click_error)}',
+                                'detail': 'The product link may not be clickable'
+                            }
                 
                 # Go to next page if not found
                 if page_num < max_pages:
                     next_btn = page.query_selector('a.s-pagination-next')
                     if next_btn:
-                        next_btn.click()
-                        page.wait_for_load_state('domcontentloaded')
-                        time.sleep(2)
+                        try:
+                            next_btn.click()
+                            page.wait_for_load_state('domcontentloaded')
+                            time.sleep(2)
+                        except Exception as e:
+                            return {
+                                'success': False,
+                                'error': f'Failed to go to page {page_num + 1}: {str(e)}',
+                                'detail': 'Pagination may have failed'
+                            }
                     else:
                         break
             
@@ -375,7 +411,8 @@ class AmazonAPI:
                 'found': False,
                 'keyword': keyword,
                 'asin': asin,
-                'message': f'Product not found in first {max_pages} pages'
+                'message': f'Product not found in first {max_pages} pages',
+                'detail': f'Searched for ASIN {asin} with keyword "{keyword}"'
             }
             
         except Exception as e:
