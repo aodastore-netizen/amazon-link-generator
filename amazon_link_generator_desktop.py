@@ -244,7 +244,7 @@ class AmazonAPI:
             import requests
             from bs4 import BeautifulSoup
         except ImportError:
-            return {'success': False, 'error': '缺少依赖', 'needs_browser': True}
+            return {'success': False, 'error': 'Missing dependencies', 'needs_browser': True}
         
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -305,7 +305,7 @@ class AmazonAPI:
         
         # Step 2: Visit the product page to get the real link with dib
         try:
-            # Extract ASIN and construct direct product URL
+            # Try to get the product page and follow redirects
             product_url = f"https://www.amazon.com/dp/{asin}"
             response = session.get(product_url, timeout=30, allow_redirects=True)
             
@@ -314,46 +314,57 @@ class AmazonAPI:
                 parsed = urlparse(final_url)
                 params = parse_qs(parsed.query)
                 
-                return {
-                    'success': True,
-                    'found': True,
-                    'full_link': final_url,
-                    'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
-                    'rank': rank_info['rank'],
-                    'page': rank_info['page'],
-                    'position': rank_info['position'],
-                    'has_dib': 'dib' in params,
-                    'keyword': keyword,
-                    'asin': asin,
-                    'method': 'requests'
-                }
+                # Check if we got dib parameter
+                if 'dib' in params:
+                    return {
+                        'success': True,
+                        'found': True,
+                        'full_link': final_url,
+                        'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                        'rank': rank_info['rank'],
+                        'page': rank_info['page'],
+                        'position': rank_info['position'],
+                        'has_dib': True,
+                        'keyword': keyword,
+                        'asin': asin,
+                        'method': 'requests'
+                    }
         except Exception as e:
             print(f"Error getting product page: {e}")
         
-        # Fallback: return search result link
-        parsed = urlparse(found_product_url)
-        params = parse_qs(parsed.query)
+        # Fallback: return search result link with ASIN
+        # Construct a proper product link
+        product_link = f"https://www.amazon.com/dp/{asin}"
         
         return {
             'success': True,
             'found': True,
-            'full_link': found_product_url,
-            'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+            'full_link': product_link,
+            'params': {},
             'rank': rank_info['rank'],
             'page': rank_info['page'],
             'position': rank_info['position'],
-            'has_dib': 'dib' in params,
+            'has_dib': False,
             'keyword': keyword,
             'asin': asin,
-            'method': 'requests'
+            'method': 'requests',
+            'note': 'Direct product link (dib parameter requires JavaScript)'
         }
     
     def get_real_link(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
-        """获取真实链接（优先使用 requests，失败再用 Playwright）"""
-        # 先尝试用简单方式获取
+        """Get real link with dib (requires Playwright for JavaScript-generated dib parameter)"""
+        # Step 1: Use requests to find product rank first
         simple_result = self.get_real_link_simple(keyword, asin, max_pages)
+        rank_info = None
         if simple_result.get('success') and simple_result.get('found'):
-            return simple_result
+            rank_info = {
+                'rank': simple_result.get('rank'),
+                'page': simple_result.get('page'),
+                'position': simple_result.get('position')
+            }
+            # If requests got dib, return immediately
+            if simple_result.get('has_dib'):
+                return simple_result
         
         # 如果被拦截或失败，且 Playwright 可用，再用浏览器
         if not self.playwright_available:
@@ -409,35 +420,79 @@ class AmazonAPI:
             
             # 逐页搜索
             for page_num in range(1, max_pages + 1):
-                links = page.query_selector_all('[data-component-type="s-search-result"] h2 a')
+                # Find all product containers
+                products = page.query_selector_all('[data-component-type="s-search-result"]')
                 
-                for position, link in enumerate(links, start=1):
-                    href = link.get_attribute('href')
+                for position, product in enumerate(products, start=1):
+                    # Find the link within this product
+                    link_elem = product.query_selector('h2 a')
+                    if not link_elem:
+                        continue
+                    
+                    href = link_elem.get_attribute('href')
                     if not href:
                         continue
                     
                     found_asin = extract_asin_from_url(href)
                     if found_asin == asin:
-                        full_url = f"https://www.amazon.com{href}" if href.startswith('/') else href
-                        parsed = urlparse(full_url)
-                        params = parse_qs(parsed.query)
-                        
-                        browser.close()
-                        playwright.stop()
-                        
-                        return {
-                            'success': True,
-                            'found': True,
-                            'full_link': full_url,
-                            'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
-                            'rank': f"{page_num}-{position}",
-                            'page': page_num,
-                            'position': position,
-                            'has_dib': 'dib' in params,
-                            'keyword': keyword,
-                            'asin': asin,
-                            'method': 'playwright'
-                        }
+                        # Click the product link to get the real URL with dib
+                        try:
+                            # Click the link and wait for navigation
+                            link_elem.click()
+                            page.wait_for_load_state('domcontentloaded', timeout=30000)
+                            time.sleep(3)  # Wait for JavaScript to generate dib
+                            
+                            # Get the current URL (should have dib parameter)
+                            full_url = page.url
+                            parsed = urlparse(full_url)
+                            params = parse_qs(parsed.query)
+                            
+                            browser.close()
+                            playwright.stop()
+                            
+                            result = {
+                                'success': True,
+                                'found': True,
+                                'full_link': full_url,
+                                'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                                'page': page_num,
+                                'position': position,
+                                'has_dib': 'dib' in params,
+                                'keyword': keyword,
+                                'asin': asin,
+                                'method': 'playwright'
+                            }
+                            
+                            # Add rank info if available from simple search
+                            if rank_info:
+                                result['rank'] = rank_info['rank']
+                            else:
+                                result['rank'] = f"{page_num}-{position}"
+                            
+                            return result
+                        except Exception as e:
+                            print(f"Error clicking product link: {e}")
+                            # Fallback: return the href from search results
+                            full_url = f"https://www.amazon.com{href}" if href.startswith('/') else href
+                            parsed = urlparse(full_url)
+                            params = parse_qs(parsed.query)
+                            
+                            browser.close()
+                            playwright.stop()
+                            
+                            return {
+                                'success': True,
+                                'found': True,
+                                'full_link': full_url,
+                                'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                                'rank': f"{page_num}-{position}",
+                                'page': page_num,
+                                'position': position,
+                                'has_dib': 'dib' in params,
+                                'keyword': keyword,
+                                'asin': asin,
+                                'method': 'playwright'
+                            }
                 
                 # 翻页
                 if page_num < max_pages:
