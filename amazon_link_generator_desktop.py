@@ -239,7 +239,7 @@ class AmazonAPI:
         }
     
     def get_real_link_simple(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
-        """Get real link using requests (faster and more stable)"""
+        """Get real link with dib parameter using requests"""
         try:
             import requests
             from bs4 import BeautifulSoup
@@ -258,6 +258,10 @@ class AmazonAPI:
         asin = asin.upper().strip()
         session = requests.Session()
         session.headers.update(headers)
+        
+        # Step 1: Search for the product
+        found_product_url = None
+        rank_info = None
         
         for page_num in range(1, max_pages + 1):
             try:
@@ -279,31 +283,70 @@ class AmazonAPI:
                     found_asin = extract_asin_from_url(href)
                     
                     if found_asin == asin:
-                        full_url = f"https://www.amazon.com{href}" if href.startswith('/') else href
-                        parsed = urlparse(full_url)
-                        params = parse_qs(parsed.query)
-                        
-                        return {
-                            'success': True,
-                            'found': True,
-                            'full_link': full_url,
-                            'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                        found_product_url = f"https://www.amazon.com{href}" if href.startswith('/') else href
+                        rank_info = {
                             'rank': f"{page_num}-{position}",
                             'page': page_num,
-                            'position': position,
-                            'has_dib': 'dib' in params,
-                            'keyword': keyword,
-                            'asin': asin,
-                            'method': 'requests'
+                            'position': position
                         }
+                        break
                 
+                if found_product_url:
+                    break
+                    
                 time.sleep(random.uniform(1, 2))
                 
             except Exception as e:
-                print(f"第{page_num}页搜索出错: {e}")
+                print(f"Page {page_num} search error: {e}")
                 continue
         
-        return {'success': True, 'found': False, 'keyword': keyword, 'asin': asin}
+        if not found_product_url:
+            return {'success': True, 'found': False, 'keyword': keyword, 'asin': asin}
+        
+        # Step 2: Visit the product page to get the real link with dib
+        try:
+            # Extract ASIN and construct direct product URL
+            product_url = f"https://www.amazon.com/dp/{asin}"
+            response = session.get(product_url, timeout=30, allow_redirects=True)
+            
+            if response.status_code == 200:
+                final_url = response.url
+                parsed = urlparse(final_url)
+                params = parse_qs(parsed.query)
+                
+                return {
+                    'success': True,
+                    'found': True,
+                    'full_link': final_url,
+                    'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                    'rank': rank_info['rank'],
+                    'page': rank_info['page'],
+                    'position': rank_info['position'],
+                    'has_dib': 'dib' in params,
+                    'keyword': keyword,
+                    'asin': asin,
+                    'method': 'requests'
+                }
+        except Exception as e:
+            print(f"Error getting product page: {e}")
+        
+        # Fallback: return search result link
+        parsed = urlparse(found_product_url)
+        params = parse_qs(parsed.query)
+        
+        return {
+            'success': True,
+            'found': True,
+            'full_link': found_product_url,
+            'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+            'rank': rank_info['rank'],
+            'page': rank_info['page'],
+            'position': rank_info['position'],
+            'has_dib': 'dib' in params,
+            'keyword': keyword,
+            'asin': asin,
+            'method': 'requests'
+        }
     
     def get_real_link(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
         """获取真实链接（优先使用 requests，失败再用 Playwright）"""
