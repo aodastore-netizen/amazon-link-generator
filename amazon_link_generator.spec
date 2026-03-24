@@ -34,7 +34,7 @@ browser_path = get_browser_path()
 added_files = []
 if browser_path and os.path.exists(browser_path):
     added_files.append((browser_path, 'playwright_browsers'))
-    print(f"打包时包含浏览器: {browser_path}")
+    print(f"Including browser: {browser_path}")
 
 a = Analysis(
     ['amazon_link_generator_desktop.py'],
