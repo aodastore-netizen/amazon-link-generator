@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亚马逊链接生成器 - 使用说明</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .slide {
+            width: 210mm;
+            height: 297mm;
+            margin: 20px auto;
+            padding: 60px;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            page-break-after: always;
+            position: relative;
+        }
+        
+        .slide:last-child {
+            page-break-after: avoid;
+        }
+        
+        h1 {
+            font-size: 48px;
+            color: #232f3e;
+            margin-bottom: 30px;
+            text-align: center;
+            border-bottom: 4px solid #ff9900;
+            padding-bottom: 20px;
+        }
+        
+        h2 {
+            font-size: 36px;
+            color: #232f3e;
+            margin: 40px 0 20px 0;
+            border-left: 6px solid #ff9900;
+            padding-left: 20px;
+        }
+        
+        h3 {
+            font-size: 28px;
+            color: #37475a;
+            margin: 30px 0 15px 0;
+        }
+        
+        p, li {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        ul, ol {
+            margin-left: 40px;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            font-size: 18px;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 15px;
+            text-align: left;
+        }
+        
+        th {
+            background: #232f3e;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 20px;
+            border-left: 5px solid #ff9900;
+            margin: 20px 0;
+        }
+        
+        .warning {
+            background: #f8d7da;
+            padding: 20px;
+            border-left: 5px solid #dc3545;
+            margin: 20px 0;
+        }
+        
+        .success {
+            background: #d4edda;
+            padding: 20px;
+            border-left: 5px solid #28a745;
+            margin: 20px 0;
+        }
+        
+        .code {
+            background: #f4f4f4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        
+        .emoji {
+            font-size: 1.2em;
+        }
+        
+        .cover {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+        }
+        
+        .cover h1 {
+            font-size: 64px;
+            border: none;
+            margin-bottom: 40px;
+        }
+        
+        .cover .subtitle {
+            font-size: 32px;
+            color: #666;
+            margin-bottom: 60px;
+        }
+        
+        .cover .date {
+            font-size: 24px;
+            color: #999;
+        }
+        
+        .page-number {
+            position: absolute;
+            bottom: 30px;
+            right: 60px;
+            font-size: 16px;
+            color: #999;
+        }
+        
+        @media print {
+            .slide {
+                margin: 0;
+                box-shadow: none;
+                page-break-after: always;
+            }
+            
+            body {
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 封面 -->
+<div class="slide cover">
+    <h1>亚马逊链接生成器</h1>
+    <div class="subtitle">使用说明与风险指南</div>
+    <div class="date">2026年3月</div>
+    <div class="page-number">1</div>
+</div>
+
+<!-- 目录 -->
+<div class="slide">
+    <h1>📋 目录</h1>
+    <ol>
+        <li>工具功能介绍</li>
+        <li>核心功能详解</li>
+        <li>技术实现原理</li>
+        <li>链接参数解析</li>
+        <li>风险与合规</li>
+        <li>最佳实践建议</li>
+    </ol>
+    <div class="page-number">2</div>
+</div>
+
+<!-- 工具功能介绍 -->
+<div class="slide">
+    <h1>🎯 工具功能介绍</h1>
+    
+    <h2>三大核心功能</h2>
+    <table>
+        <tr>
+            <th>功能</th>
+            <th>说明</th>
+            <th>用途</th>
+        </tr>
+        <tr>
+            <td><span class="emoji">🔗</span> 链接生成</td>
+            <td>生成带完整追踪参数的亚马逊链接</td>
+            <td>推广、测评、分享</td>
+        </tr>
+        <tr>
+            <td><span class="emoji">🔍</span> 链接解析</td>
+            <td>解析任意亚马逊链接的参数结构</td>
+            <td>分析、学习、优化</td>
+        </tr>
+        <tr>
+            <td><span class="emoji">✂️</span> 短链服务</td>
+            <td>生成简洁的短链接</td>
+            <td>便于传播和跟踪</td>
+        </tr>
+    </table>
+    
+    <h2>支持站点</h2>
+    <p><span class="emoji">🇺🇸 🇨🇳 🇯🇵 🇬🇧 🇩🇪 🇫🇷 🇮🇹 🇪🇸</span></p>
+    <p>美国、中国、日本、英国、德国、法国、意大利、西班牙</p>
+    
+    <div class="page-number">3</div>
+</div>
+
+<!-- 核心功能详解 - 链接生成 -->
+<div class="slide">
+    <h1>🔧 核心功能详解</h1>
+    
+    <h2>1️⃣ 亚马逊链接生成</h2>
+    
+    <h3>输入参数</h3>
+    <ul>
+        <li><strong>ASIN</strong> (必填) - 产品唯一标识</li>
+        <li><strong>产品标题</strong> - 用于 SEO 友好的 URL</li>
+        <li><strong>关键词</strong> - 搜索来源关键词</li>
+        <li><strong>推广标签 (tag)</strong> - 联盟营销标识</li>
+    </ul>
+    
+    <h3>输出链接结构</h3>
+    <div class="code">
+https://www.amazon.com/产品标题/dp/ASIN
+/ref=sr_1_1?                ← 搜索排名
+  crid=ABC123               ← 搜索会话ID
+  &keywords=关键词          ← 搜索关键词
+  &qid=1234567890          ← 时间戳
+  &sprefix=关键词%2Caps     ← 搜索前缀
+  &sr=1-1                   ← 排名位置
+  &tag=推广标签             ← 联盟标签
+  &xpid=xyz                 ← 页面ID
+    </div>
+    
+    <div class="page-number">4</div>
+</div>
+
+<!-- 核心功能详解 - 链接解析 -->
+<div class="slide">
+    <h1>🔧 核心功能详解</h1>
+    
+    <h2>2️⃣ 链接解析功能</h2>
+    
+    <h3>可解析的参数</h3>
+    <table>
+        <tr>
+            <th>参数</th>
+            <th>含义</th>
+            <th>示例</th>
+        </tr>
+        <tr>
+            <td>ref</td>
+            <td>来源页面</td>
+            <td>sr_1_1 = 搜索第1页第1位</td>
+        </tr>
+        <tr>
+            <td>qid</td>
+            <td>搜索时间戳</td>
+            <td>Unix 时间戳</td>
+        </tr>
+        <tr>
+            <td>sr</td>
+            <td>搜索排名</td>
+            <td>1-1 = 第1页第1位</td>
+        </tr>
+        <tr>
+            <td>crid</td>
+            <td>搜索会话ID</td>
+            <td>16位随机字符</td>
+        </tr>
+        <tr>
+            <td>dib</td>
+            <td>设备指纹</td>
+            <td>Base64 编码的 JSON</td>
+        </tr>
+    </table>
+    
+    <div class="page-number">5</div>
+</div>
+
+<!-- 技术实现原理 -->
+<div class="slide">
+    <h1>🔬 技术实现原理</h1>
+    
+    <h2>dib 参数详解</h2>
+    
+    <p><strong>dib = Device/Browser Identifier</strong></p>
+    
+    <div class="code">
+{
+  "v": "1",           // 版本
+  "ct": "search",     // 点击类型
+  "t": 1234567890,    // 时间戳
+  "rk": 123456        // 排名标识
+}
+    </div>
+    
+    <h3>编码方式</h3>
+    <ul>
+        <li>JSON → Base64 → URL 编码</li>
+        <li>包含设备指纹和会话信息</li>
+        <li>由亚马逊 JavaScript 动态生成</li>
+    </ul>
+    
+    <div class="highlight">
+        <strong>注意：</strong>dib 参数只能通过真实浏览器获取，requests 无法模拟
+    </div>
+    
+    <div class="page-number">6</div>
+</div>
+
+<!-- 风险与合规 - 亚马逊能看到什么 -->
+<div class="slide">
+    <h1>⚠️ 风险与合规</h1>
+    
+    <h2>亚马逊能看到的数据</h2>
+    
+    <table>
+        <tr>
+            <th>数据类型</th>
+            <th>说明</th>
+            <th>风险等级</th>
+        </tr>
+        <tr>
+            <td>访问来源</td>
+            <td>搜索关键词、引荐页面</td>
+            <td>🟡 中</td>
+        </tr>
+        <tr>
+            <td>搜索时间</td>
+            <td>qid 时间戳</td>
+            <td>🟢 低</td>
+        </tr>
+        <tr>
+            <td>点击位置</td>
+            <td>搜索排名 sr</td>
+            <td>🟡 中</td>
+        </tr>
+        <tr>
+            <td>用户行为</td>
+            <td>鼠标移动、停留时间</td>
+            <td>🔴 高</td>
+        </tr>
+        <tr>
+            <td>账号信息</td>
+            <td>账号年龄、购买历史</td>
+            <td>🔴 高</td>
+        </tr>
+        <tr>
+            <td>设备指纹</td>
+            <td>浏览器、操作系统</td>
+            <td>🔴 高</td>
+        </tr>
+    </table>
+    
+    <div class="page-number">7</div>
+</div>
+
+<!-- 风险与合规 - 触发风控的因素 -->
+<div class="slide">
+    <h1>⚠️ 风险与合规</h1>
+    
+    <h2>真正触发风控的因素</h2>
+    
+    <div class="warning">
+        <h3>🔴 高风险行为</h3>
+        <ul>
+            <li>新账号大量下单</li>
+            <li>秒拍秒付（不浏览直接购买）</li>
+            <li>同一 IP 多账号操作</li>
+            <li>使用机房 IP 或代理 IP</li>
+            <li>虚拟信用卡支付</li>
+            <li>收货地址雷同</li>
+            <li>评价内容雷同</li>
+        </ul>
+    </div>
+    
+    <div class="success">
+        <h3>🟢 安全行为</h3>
+        <ul>
+            <li>使用老账号（6个月以上）</li>
+            <li>正常的购买历史</li>
+            <li>真实的收货地址</li>
+            <li>自然的浏览行为</li>
+        </ul>
+    </div>
+    
+    <div class="page-number">8</div>
+</div>
+
+<!-- 最佳实践建议 -->
+<div class="slide">
+    <h1>💡 最佳实践建议</h1>
+    
+    <h2>1. 链接生成建议</h2>
+    <div class="success">
+        <strong>✅ 应该做的：</strong>
+        <ul>
+            <li>使用真实的关键词</li>
+            <li>生成合理的搜索排名</li>
+            <li>包含完整的时间戳和会话ID</li>
+            <li>使用自然的浏览路径</li>
+        </ul>
+    </div>
+    
+    <div class="warning">
+        <strong>❌ 不应该做的：</strong>
+        <ul>
+            <li>使用相同的关键词重复生成</li>
+            <li>时间戳过于规律</li>
+            <li>排名位置不合理</li>
+        </ul>
+    </div>
+    
+    <div class="page-number">9</div>
+</div>
+
+<!-- 最佳实践建议 - 行为模拟 -->
+<div class="slide">
+    <h1>💡 最佳实践建议</h1>
+    
+    <h2>2. 行为模拟建议</h2>
+    
+    <div class="success">
+        <h3>✅ 真实用户行为</h3>
+        <ul>
+            <li>搜索关键词</li>
+            <li>浏览多个产品</li>
+            <li>查看产品详情</li>
+            <li>阅读评价</li>
+            <li>比较价格</li>
+            <li>加入购物车</li>
+            <li>稍后购买</li>
+        </ul>
+    </div>
+    
+    <div class="warning">
+        <h3>❌ 机器人行为</h3>
+        <ul>
+            <li>直接打开链接购买</li>
+            <li>秒拍秒付</li>
+            <li>不浏览直接下单</li>
+            <li>固定时间间隔操作</li>
+        </ul>
+    </div>
+    
+    <div class="page-number">10</div>
+</div>
+
+<!-- 技术架构 -->
+<div class="slide">
+    <h1>🛠️ 技术架构</h1>
+    
+    <h2>系统架构</h2>
+    
+    <div class="code">
+┌─────────────────┐
+│   用户界面       │
+│  (Web/桌面)     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   API 服务层    │
+│  (Flask/FastAPI)│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   业务逻辑层    │
+│  链接生成/解析  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   数据存储层    │
+│  SQLite/Redis   │
+└─────────────────┘
+    </div>
+    
+    <h2>核心模块</h2>
+    <ul>
+        <li><strong>generate_link()</strong> - 链接生成</li>
+        <li><strong>parse_link()</strong> - 链接解析</li>
+        <li><strong>shorten_url()</strong> - 短链服务</li>
+        <li><strong>check_rank()</strong> - 排名查询</li>
+    </ul>
+    
+    <div class="page-number">11</div>
+</div>
+
+<!-- 部署方案 -->
+<div class="slide">
+    <h1>🚀 部署方案</h1>
+    
+    <h2>方案一：本地使用</h2>
+    <div class="code">
+git clone https://github.com/aodastore-netizen/amazon-link-generator.git
+cd amazon-link-generator
+pip install -r requirements.txt
+python amazon_link_generator.py
+    </div>
+    
+    <h2>方案二：Web 部署</h2>
+    <div class="code">
+# 使用 Gunicorn
+gunicorn -w 4 -b 0.0.0.0:5000 app:app
+
+# Nginx 反向代理
+server {
+    listen 80;
+    server_name yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+    }
+}
+    </div>
+    
+    <h2>方案三：Docker 部署</h2>
+    <div class="code">
+FROM python:3.9
+WORKDIR /app
+COPY . /app
+RUN pip install -r requirements.txt
+EXPOSE 5000
+CMD ["python", "app.py"]
+    </div>
+    
+    <div class="page-number">12</div>
+</div>
+
+<!-- 常见问题 -->
+<div class="slide">
+    <h1>❓ 常见问题</h1>
+    
+    <div class="highlight">
+        <h3>Q: 生成的链接安全吗？</h3>
+        <p>A: 链接参数本身安全，但行为更重要。模拟真实用户行为是关键。</p>
+    </div>
+    
+    <div class="highlight">
+        <h3>Q: 会被亚马逊封号吗？</h3>
+        <p>A: 链接不会导致封号，但异常行为会。遵循最佳实践可降低风险。</p>
+    </div>
+    
+    <div class="highlight">
+        <h3>Q: 支持哪些亚马逊站点？</h3>
+        <p>A: 支持美国、中国、日本、英国、德国、法国、意大利、西班牙等。</p>
+    </div>
+    
+    <div class="highlight">
+        <h3>Q: 短链服务稳定吗？</h3>
+        <p>A: 自建短链服务完全可控，建议使用自己的域名。</p>
+    </div>
+    
+    <div class="page-number">13</div>
+</div>
+
+<!-- 免责声明 -->
+<div class="slide">
+    <h1>📄 免责声明</h1>
+    
+    <div class="warning">
+        <h2>重要提示</h2>
+        <p>本工具仅供学习和技术研究使用。</p>
+        <p>用户应遵守亚马逊的服务条款和相关法律法规。</p>
+        <p>因使用本工具导致的任何后果，由用户自行承担。</p>
+    </div>
+    
+    <h2>使用原则</h2>
+    <ul>
+        <li>技术无罪，使用有度</li>
+        <li>遵守平台规则</li>
+        <li>尊重知识产权</li>
+        <li>合法合规经营</li>
+    </ul>
+    
+    <div class="page-number">14</div>
+</div>
+
+<!-- 感谢页 -->
+<div class="slide cover">
+    <h1>感谢使用</h1>
+    <div class="subtitle">亚马逊链接生成器</div>
+    <p style="margin-top: 60px; font-size: 24px;">希望这个工具能帮助你更好地理解和使用亚马逊链接</p>
+    <div style="margin-top: 100px;">
+        <p>GitHub: github.com/aodastore-netizen/amazon-link-generator</p>
+    </div>
+    <div class="date">2026年3月</div>
+    <div class="page-number">15</div>
+</div>
+
+</body>
+</html>
