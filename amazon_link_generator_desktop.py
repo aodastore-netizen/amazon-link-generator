@@ -239,7 +239,7 @@ class AmazonAPI:
         }
     
     def get_real_link_simple(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
-        """获取真实链接（使用 requests，更快更稳定）"""
+        """Get real link using requests (faster and more stable)"""
         try:
             import requests
             from bs4 import BeautifulSoup
