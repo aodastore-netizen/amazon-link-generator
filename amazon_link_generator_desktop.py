@@ -332,8 +332,28 @@ class AmazonAPI:
         except Exception as e:
             print(f"Error getting product page: {e}")
         
-        # Fallback: return search result link with ASIN
-        # Construct a proper product link
+        # Fallback: return search result link
+        # Use the actual search result URL if available
+        if found_product_url:
+            parsed = urlparse(found_product_url)
+            params = parse_qs(parsed.query)
+            
+            return {
+                'success': True,
+                'found': True,
+                'full_link': found_product_url,
+                'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                'rank': rank_info['rank'],
+                'page': rank_info['page'],
+                'position': rank_info['position'],
+                'has_dib': 'dib' in params,
+                'keyword': keyword,
+                'asin': asin,
+                'method': 'requests',
+                'note': 'Search result link'
+            }
+        
+        # Last resort: construct product link
         product_link = f"https://www.amazon.com/dp/{asin}"
         
         return {
@@ -341,14 +361,14 @@ class AmazonAPI:
             'found': True,
             'full_link': product_link,
             'params': {},
-            'rank': rank_info['rank'],
-            'page': rank_info['page'],
-            'position': rank_info['position'],
+            'rank': rank_info['rank'] if rank_info else 'N/A',
+            'page': rank_info['page'] if rank_info else 0,
+            'position': rank_info['position'] if rank_info else 0,
             'has_dib': False,
             'keyword': keyword,
             'asin': asin,
             'method': 'requests',
-            'note': 'Direct product link (dib parameter requires JavaScript)'
+            'note': 'Direct product link (not found in search)'
         }
     
     def get_real_link_direct(self, asin: str) -> dict:
