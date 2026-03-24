@@ -58,16 +58,47 @@ class AmazonAPI:
         """检查 Playwright 是否可用"""
         try:
             from playwright.sync_api import sync_playwright
+            # 设置浏览器路径环境变量（如果在打包环境中）
+            self._setup_playwright_path()
             # 尝试启动浏览器验证
             with sync_playwright() as p:
                 browser = p.chromium.launch()
                 browser.close()
             return True
-        except Exception:
+        except Exception as e:
+            print(f"Playwright 检查失败: {e}")
             return False
+    
+    def _setup_playwright_path(self):
+        """设置 Playwright 浏览器路径"""
+        # 如果已经有环境变量，不覆盖
+        if os.environ.get('PLAYWRIGHT_BROWSERS_PATH'):
+            return
+        
+        # 检查可能的浏览器安装位置
+        possible_paths = [
+            # Windows 默认安装路径
+            os.path.expanduser('~/AppData/Local/ms-playwright'),
+            os.path.expanduser('~\\AppData\\Local\\ms-playwright'),
+            # 当前用户目录
+            os.path.join(os.path.expanduser('~'), 'AppData', 'Local', 'ms-playwright'),
+            # 系统级安装（较少见）
+            'C:\\ProgramData\\ms-playwright',
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                os.environ['PLAYWRIGHT_BROWSERS_PATH'] = path
+                print(f"设置 PLAYWRIGHT_BROWSERS_PATH: {path}")
+                return
     
     def _get_playwright_browsers_path(self) -> str:
         """获取 Playwright 浏览器路径（支持打包后的环境）"""
+        # 首先检查环境变量
+        env_path = os.environ.get('PLAYWRIGHT_BROWSERS_PATH')
+        if env_path and os.path.exists(env_path):
+            return env_path
+        
         # 检查是否在打包环境中
         if getattr(sys, 'frozen', False):
             # 运行在 PyInstaller 打包环境中
@@ -75,7 +106,9 @@ class AmazonAPI:
             browser_path = os.path.join(base_path, 'browsers')
             if os.path.exists(browser_path):
                 return browser_path
-        return None
+        
+        # 返回默认路径
+        return os.path.expanduser('~/AppData/Local/ms-playwright')
     
     def generate_link(self, mode: str, data: dict) -> dict:
         """生成推广链接"""
@@ -205,68 +238,137 @@ class AmazonAPI:
             'message': f'在前{max_pages}页中未找到该产品'
         }
     
-    def get_real_link(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
-        """获取真实链接（使用 Playwright）"""
-        if not self.playwright_available:
-            return {
-                'success': False,
-                'error': 'Playwright 未安装',
-                'install_guide': {
-                    'title': '需要安装 Playwright',
-                    'steps': [
-                        '1. 安装 Python（https://www.python.org/downloads/）',
-                        '2. 打开命令提示符（CMD）',
-                        '3. 运行: pip install playwright',
-                        '4. 运行: playwright install chromium',
-                        '5. 重新启动本软件'
-                    ],
-                    'note': '或者下载完整版（包含所有依赖）'
-                }
-            }
+    def get_real_link_simple(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
+        """获取真实链接（使用 requests，更快更稳定）"""
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+        except ImportError:
+            return {'success': False, 'error': '缺少依赖', 'needs_browser': True}
         
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+        }
+        
+        asin = asin.upper().strip()
+        session = requests.Session()
+        session.headers.update(headers)
+        
+        for page_num in range(1, max_pages + 1):
+            try:
+                url = f"https://www.amazon.com/s?k={quote_plus(keyword)}&page={page_num}"
+                response = session.get(url, timeout=30)
+                
+                if response.status_code != 200:
+                    continue
+                
+                soup = BeautifulSoup(response.text, 'html.parser')
+                products = soup.select('[data-component-type="s-search-result"]')
+                
+                for position, product in enumerate(products, start=1):
+                    link_elem = product.find('a', href=True)
+                    if not link_elem:
+                        continue
+                    
+                    href = link_elem.get('href', '')
+                    found_asin = extract_asin_from_url(href)
+                    
+                    if found_asin == asin:
+                        full_url = f"https://www.amazon.com{href}" if href.startswith('/') else href
+                        parsed = urlparse(full_url)
+                        params = parse_qs(parsed.query)
+                        
+                        return {
+                            'success': True,
+                            'found': True,
+                            'full_link': full_url,
+                            'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                            'rank': f"{page_num}-{position}",
+                            'page': page_num,
+                            'position': position,
+                            'has_dib': 'dib' in params,
+                            'keyword': keyword,
+                            'asin': asin,
+                            'method': 'requests'
+                        }
+                
+                time.sleep(random.uniform(1, 2))
+                
+            except Exception as e:
+                print(f"第{page_num}页搜索出错: {e}")
+                continue
+        
+        return {'success': True, 'found': False, 'keyword': keyword, 'asin': asin}
+    
+    def get_real_link(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
+        """获取真实链接（优先使用 requests，失败再用 Playwright）"""
+        # 先尝试用简单方式获取
+        simple_result = self.get_real_link_simple(keyword, asin, max_pages)
+        if simple_result.get('success') and simple_result.get('found'):
+            return simple_result
+        
+        # 如果被拦截或失败，且 Playwright 可用，再用浏览器
+        if not self.playwright_available:
+            if simple_result.get('needs_browser'):
+                return {
+                    'success': False,
+                    'error': '需要浏览器模式，但 Playwright 未安装',
+                    'install_guide': {
+                        'title': '需要安装 Playwright',
+                        'steps': [
+                            '1. 安装 Python（https://www.python.org/downloads/）',
+                            '2. 打开命令提示符（CMD）',
+                            '3. 运行: pip install playwright',
+                            '4. 运行: playwright install chromium',
+                            '5. 重新启动本软件'
+                        ]
+                    }
+                }
+            return simple_result
+        
+        # 使用 Playwright 作为备选
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:
-            return {
-                'success': False,
-                'error': 'Playwright 未安装'
-            }
+            return simple_result
         
         asin = asin.upper().strip()
         
         try:
             playwright = sync_playwright().start()
+            
             browser = playwright.chromium.launch(
                 headless=True,
-                args=['--disable-blink-features=AutomationControlled']
+                args=['--disable-blink-features=AutomationControlled', '--no-sandbox']
             )
             
             context = browser.new_context(
-                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 viewport={'width': 1920, 'height': 1080}
             )
             
             page = context.new_page()
-            page.add_init_script("""
-                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            """)
             
-            # 访问亚马逊
-            page.goto('https://www.amazon.com', wait_until='networkidle')
-            time.sleep(random.uniform(2, 4))
+            # 访问亚马逊首页
+            page.goto('https://www.amazon.com', timeout=30000)
+            time.sleep(2)
             
             # 搜索
-            page.locator('#twotabsearchtextbox').fill(keyword)
-            time.sleep(random.uniform(0.5, 1.5))
-            page.locator('#nav-search-submit-button').click()
-            page.wait_for_load_state('networkidle')
-            time.sleep(random.uniform(3, 5))
+            page.fill('#twotabsearchtextbox', keyword)
+            page.click('#nav-search-submit-button')
+            page.wait_for_load_state('domcontentloaded')
+            time.sleep(2)
             
             # 逐页搜索
             for page_num in range(1, max_pages + 1):
-                product_links = page.locator('[data-component-type="s-search-result"] h2 a').all()
+                links = page.query_selector_all('[data-component-type="s-search-result"] h2 a')
                 
-                for position, link in enumerate(product_links, start=1):
+                for position, link in enumerate(links, start=1):
                     href = link.get_attribute('href')
                     if not href:
                         continue
@@ -290,16 +392,17 @@ class AmazonAPI:
                             'position': position,
                             'has_dib': 'dib' in params,
                             'keyword': keyword,
-                            'asin': asin
+                            'asin': asin,
+                            'method': 'playwright'
                         }
                 
                 # 翻页
                 if page_num < max_pages:
-                    next_button = page.locator('a.s-pagination-next')
-                    if next_button.count() > 0 and next_button.is_visible():
-                        next_button.click()
-                        page.wait_for_load_state('networkidle')
-                        time.sleep(random.uniform(3, 5))
+                    next_btn = page.query_selector('a.s-pagination-next')
+                    if next_btn:
+                        next_btn.click()
+                        page.wait_for_load_state('domcontentloaded')
+                        time.sleep(2)
                     else:
                         break
             
@@ -317,7 +420,7 @@ class AmazonAPI:
         except Exception as e:
             return {
                 'success': False,
-                'error': str(e)
+                'error': f"浏览器模式失败: {str(e)}"
             }
 
 
