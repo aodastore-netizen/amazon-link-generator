@@ -167,19 +167,19 @@ class AmazonAPI:
         }
     
     def check_rank_simple(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
-        """简化的排名查询（使用 requests）"""
+        """Check product search rank using requests"""
         try:
             import requests
             from bs4 import BeautifulSoup
         except ImportError:
             return {
                 'success': False,
-                'error': '缺少依赖：pip install requests beautifulsoup4',
+                'error': 'Missing dependencies: pip install requests beautifulsoup4',
                 'needs_browser': True
             }
         
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
         }
@@ -194,17 +194,28 @@ class AmazonAPI:
                 response = session.get(url, timeout=30)
                 
                 if response.status_code != 200:
-                    continue
-                
-                if "captcha" in response.text.lower():
                     return {
                         'success': False,
-                        'error': '被亚马逊反爬拦截，请使用真实浏览器模式',
-                        'needs_browser': True
+                        'error': f'Amazon returned status {response.status_code}',
+                        'detail': 'The request was blocked or failed'
+                    }
+                
+                if "captcha" in response.text.lower() or "robot" in response.text.lower():
+                    return {
+                        'success': False,
+                        'error': 'Amazon anti-bot detection triggered',
+                        'detail': 'Please try again later or use browser mode'
                     }
                 
                 soup = BeautifulSoup(response.text, 'html.parser')
                 products = soup.select('[data-component-type="s-search-result"]')
+                
+                if not products:
+                    return {
+                        'success': False,
+                        'error': 'No products found on search page',
+                        'detail': 'Amazon may have changed their page structure or blocked the request'
+                    }
                 
                 for position, product in enumerate(products, start=1):
                     link = product.find('a', href=True)
@@ -227,148 +238,29 @@ class AmazonAPI:
                 time.sleep(random.uniform(1, 2))
                 
             except Exception as e:
-                print(f"搜索第{page}页出错: {e}")
-                continue
+                return {
+                    'success': False,
+                    'error': f'Search error on page {page}: {str(e)}',
+                    'detail': 'An unexpected error occurred while searching'
+                }
         
         return {
             'success': True,
             'found': False,
             'keyword': keyword,
             'asin': asin,
-            'message': f'在前{max_pages}页中未找到该产品'
+            'message': f'Product not found in first {max_pages} pages'
         }
     
     def get_real_link_simple(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
-        """Get real link with dib parameter using requests"""
-        try:
-            import requests
-            from bs4 import BeautifulSoup
-        except ImportError:
-            return {'success': False, 'error': 'Missing dependencies', 'needs_browser': True}
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-        }
-        
-        asin = asin.upper().strip()
-        session = requests.Session()
-        session.headers.update(headers)
-        
-        # Step 1: Search for the product
-        found_product_url = None
-        rank_info = None
-        
-        for page_num in range(1, max_pages + 1):
-            try:
-                url = f"https://www.amazon.com/s?k={quote_plus(keyword)}&page={page_num}"
-                response = session.get(url, timeout=30)
-                
-                if response.status_code != 200:
-                    continue
-                
-                soup = BeautifulSoup(response.text, 'html.parser')
-                products = soup.select('[data-component-type="s-search-result"]')
-                
-                for position, product in enumerate(products, start=1):
-                    link_elem = product.find('a', href=True)
-                    if not link_elem:
-                        continue
-                    
-                    href = link_elem.get('href', '')
-                    found_asin = extract_asin_from_url(href)
-                    
-                    if found_asin == asin:
-                        found_product_url = f"https://www.amazon.com{href}" if href.startswith('/') else href
-                        rank_info = {
-                            'rank': f"{page_num}-{position}",
-                            'page': page_num,
-                            'position': position
-                        }
-                        break
-                
-                if found_product_url:
-                    break
-                    
-                time.sleep(random.uniform(1, 2))
-                
-            except Exception as e:
-                print(f"Page {page_num} search error: {e}")
-                continue
-        
-        if not found_product_url:
-            return {'success': True, 'found': False, 'keyword': keyword, 'asin': asin}
-        
-        # Step 2: Visit the product page to get the real link with dib
-        try:
-            # Try to get the product page and follow redirects
-            product_url = f"https://www.amazon.com/dp/{asin}"
-            response = session.get(product_url, timeout=30, allow_redirects=True)
-            
-            if response.status_code == 200:
-                final_url = response.url
-                parsed = urlparse(final_url)
-                params = parse_qs(parsed.query)
-                
-                # Check if we got dib parameter
-                if 'dib' in params:
-                    return {
-                        'success': True,
-                        'found': True,
-                        'full_link': final_url,
-                        'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
-                        'rank': rank_info['rank'],
-                        'page': rank_info['page'],
-                        'position': rank_info['position'],
-                        'has_dib': True,
-                        'keyword': keyword,
-                        'asin': asin,
-                        'method': 'requests'
-                    }
-        except Exception as e:
-            print(f"Error getting product page: {e}")
-        
-        # Fallback: return search result link
-        # Use the actual search result URL if available
-        if found_product_url:
-            parsed = urlparse(found_product_url)
-            params = parse_qs(parsed.query)
-            
-            return {
-                'success': True,
-                'found': True,
-                'full_link': found_product_url,
-                'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
-                'rank': rank_info['rank'],
-                'page': rank_info['page'],
-                'position': rank_info['position'],
-                'has_dib': 'dib' in params,
-                'keyword': keyword,
-                'asin': asin,
-                'method': 'requests',
-                'note': 'Search result link'
-            }
-        
-        # Last resort: construct product link
-        product_link = f"https://www.amazon.com/dp/{asin}"
-        
+        """Get real link - this requires JavaScript for dib parameter, so it will fail with requests"""
+        # requests cannot get dib parameter because it's generated by JavaScript
+        # Return an error indicating browser is needed
         return {
-            'success': True,
-            'found': True,
-            'full_link': product_link,
-            'params': {},
-            'rank': rank_info['rank'] if rank_info else 'N/A',
-            'page': rank_info['page'] if rank_info else 0,
-            'position': rank_info['position'] if rank_info else 0,
-            'has_dib': False,
-            'keyword': keyword,
-            'asin': asin,
-            'method': 'requests',
-            'note': 'Direct product link (not found in search)'
+            'success': False,
+            'error': 'Cannot get real link with dib using requests',
+            'detail': 'The dib parameter is generated by JavaScript and requires a real browser (Playwright)',
+            'needs_browser': True
         }
     
     def get_real_link_direct(self, asin: str) -> dict:
@@ -439,21 +331,35 @@ class AmazonAPI:
             return {'success': False, 'error': f'Direct access failed: {str(e)}'}
     
     def get_real_link(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
-        """Get real link with dib (try search first, then direct access)"""
-        # Step 1: Try to find product rank via search
-        simple_result = self.get_real_link_simple(keyword, asin, max_pages)
+        """Get real link with dib parameter using Playwright browser"""
+        # Step 1: First check rank using requests
+        rank_result = self.check_rank_simple(keyword, asin, max_pages)
         rank_info = None
-        if simple_result.get('success') and simple_result.get('found'):
+        if rank_result.get('success') and rank_result.get('found'):
             rank_info = {
-                'rank': simple_result.get('rank'),
-                'page': simple_result.get('page'),
-                'position': simple_result.get('position')
+                'rank': rank_result.get('rank'),
+                'page': rank_result.get('page'),
+                'position': rank_result.get('position')
             }
-            # If requests got dib, return immediately
-            if simple_result.get('has_dib'):
-                return simple_result
         
-        # Step 2: If not found in search or no dib, try direct access
+        # Step 2: Use Playwright to get real link with dib
+        if not self.playwright_available:
+            return {
+                'success': False,
+                'error': 'Playwright not installed',
+                'detail': 'Getting real link with dib requires Playwright browser',
+                'install_guide': {
+                    'title': '需要安装 Playwright',
+                    'steps': [
+                        '1. 安装 Python（https://www.python.org/downloads/）',
+                        '2. 打开命令提示符（CMD）',
+                        '3. 运行: pip install playwright',
+                        '4. 运行: playwright install chromium',
+                        '5. 重新启动本软件'
+                    ]
+                }
+            }
+        
         direct_result = self.get_real_link_direct(asin)
         if direct_result.get('success') and direct_result.get('found'):
             # Add rank info if we found it earlier
@@ -462,14 +368,12 @@ class AmazonAPI:
                 direct_result['page'] = rank_info['page']
                 direct_result['position'] = rank_info['position']
             else:
-                direct_result['rank'] = 'N/A'
+                direct_result['rank'] = 'N/A (not found in search)'
                 direct_result['page'] = 0
                 direct_result['position'] = 0
             return direct_result
         
-        # Step 3: If direct access also failed, return search result or error
-        if simple_result.get('success'):
-            return simple_result
+        # Return error if direct access failed
         return direct_result
 
 
