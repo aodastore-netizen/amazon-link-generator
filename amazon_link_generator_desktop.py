@@ -166,6 +166,40 @@ class AmazonAPI:
             }
         }
     
+    def generate_natural_search_link(self, keyword: str, asin: str, page: int = 1) -> dict:
+        """Generate natural search entry link for reviewers"""
+        # Generate natural search parameters
+        qid = generate_timestamp()
+        crid = generate_random_string(16)
+        
+        # Build natural search URL
+        encoded_keyword = quote_plus(keyword)
+        
+        # Natural search link - starts from search results page
+        search_link = f"https://www.amazon.com/s?k={encoded_keyword}&page={page}&qid={qid}&ref=sr_pg_{page}"
+        
+        # Also generate the product link that should be found
+        product_link = f"https://www.amazon.com/dp/{asin}?qid={qid}"
+        
+        return {
+            'success': True,
+            'search_link': search_link,
+            'product_link': product_link,
+            'keyword': keyword,
+            'asin': asin,
+            'page': page,
+            'params': {
+                'qid': qid,
+                'crid': crid
+            },
+            'instructions': [
+                f'1. Click the search link: {search_link}',
+                f'2. Find the product with ASIN {asin} on page {page}',
+                f'3. Click on the product',
+                f'4. The final URL will contain natural parameters (qid, sr, etc.)'
+            ]
+        }
+    
     def check_rank_simple(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
         """Check product search rank using requests"""
         try:
@@ -606,6 +640,7 @@ HTML_CONTENT = '''<!DOCTYPE html>
         <button class="btn" onclick="generateLink()">生成链接</button>
         <button class="btn btn-secondary" id="real-link-btn" onclick="fetchRealLink()" style="display:none;">获取真实链接（带dib）</button>
         <button class="btn btn-warning" id="check-rank-btn" onclick="checkRank()" style="display:none;">查询排名</button>
+        <button class="btn" onclick="generateNaturalSearchLink()" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">生成自然搜索链接（测评用）</button>
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -768,6 +803,31 @@ HTML_CONTENT = '''<!DOCTYPE html>
                 btn.textContent = '已复制!';
                 setTimeout(() => btn.textContent = '复制真实链接', 2000);
             });
+        }
+
+        async function generateNaturalSearchLink() {
+            const keyword = document.getElementById('search-keyword').value.trim();
+            const asin = document.getElementById('search-asin').value.trim();
+            if (!keyword || !asin) { showStatus('请先填写关键词和 ASIN', 'error'); return; }
+            
+            showLoading('正在生成自然搜索链接...');
+            try {
+                const result = await window.pywebview.api.generate_natural_search_link(keyword, asin, 1);
+                hideLoading();
+                if (result.success) {
+                    document.getElementById('result-link').textContent = result.search_link;
+                    document.getElementById('result').style.display = 'block';
+                    showStatus('自然搜索链接已生成！让测评员点击此链接进入搜索页面', 'success');
+                    
+                    // Show instructions
+                    alert('测评 instructions:\n\n' + result.instructions.join('\n'));
+                } else {
+                    showStatus(result.error || '生成失败', 'error');
+                }
+            } catch (error) {
+                hideLoading();
+                showStatus('错误: ' + error.message, 'error');
+            }
         }
     </script>
 </body>
