@@ -351,9 +351,76 @@ class AmazonAPI:
             'note': 'Direct product link (dib parameter requires JavaScript)'
         }
     
+    def get_real_link_direct(self, asin: str) -> dict:
+        """Get real link by directly visiting product page (no search needed)"""
+        if not self.playwright_available:
+            return {
+                'success': False,
+                'error': 'Playwright not installed',
+                'install_guide': {
+                    'title': '需要安装 Playwright',
+                    'steps': [
+                        '1. 安装 Python（https://www.python.org/downloads/）',
+                        '2. 打开命令提示符（CMD）',
+                        '3. 运行: pip install playwright',
+                        '4. 运行: playwright install chromium',
+                        '5. 重新启动本软件'
+                    ]
+                }
+            }
+        
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            return {'success': False, 'error': 'Playwright not installed'}
+        
+        asin = asin.upper().strip()
+        
+        try:
+            playwright = sync_playwright().start()
+            
+            browser = playwright.chromium.launch(
+                headless=True,
+                args=['--disable-blink-features=AutomationControlled', '--no-sandbox']
+            )
+            
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                viewport={'width': 1920, 'height': 1080}
+            )
+            
+            page = context.new_page()
+            
+            # Directly visit product page
+            product_url = f"https://www.amazon.com/dp/{asin}"
+            page.goto(product_url, timeout=60000, wait_until='domcontentloaded')
+            time.sleep(3)  # Wait for JavaScript to generate dib
+            
+            # Get the final URL (should have dib parameter)
+            final_url = page.url
+            parsed = urlparse(final_url)
+            params = parse_qs(parsed.query)
+            
+            browser.close()
+            playwright.stop()
+            
+            return {
+                'success': True,
+                'found': True,
+                'full_link': final_url,
+                'params': {k: v[0] if len(v) == 1 else v for k, v in params.items()},
+                'has_dib': 'dib' in params,
+                'asin': asin,
+                'method': 'direct',
+                'note': 'Direct product page access'
+            }
+            
+        except Exception as e:
+            return {'success': False, 'error': f'Direct access failed: {str(e)}'}
+    
     def get_real_link(self, keyword: str, asin: str, max_pages: int = 5) -> dict:
-        """Get real link with dib (requires Playwright for JavaScript-generated dib parameter)"""
-        # Step 1: Use requests to find product rank first
+        """Get real link with dib (try search first, then direct access)"""
+        # Step 1: Try to find product rank via search
         simple_result = self.get_real_link_simple(keyword, asin, max_pages)
         rank_info = None
         if simple_result.get('success') and simple_result.get('found'):
@@ -365,6 +432,25 @@ class AmazonAPI:
             # If requests got dib, return immediately
             if simple_result.get('has_dib'):
                 return simple_result
+        
+        # Step 2: If not found in search or no dib, try direct access
+        direct_result = self.get_real_link_direct(asin)
+        if direct_result.get('success') and direct_result.get('found'):
+            # Add rank info if we found it earlier
+            if rank_info:
+                direct_result['rank'] = rank_info['rank']
+                direct_result['page'] = rank_info['page']
+                direct_result['position'] = rank_info['position']
+            else:
+                direct_result['rank'] = 'N/A'
+                direct_result['page'] = 0
+                direct_result['position'] = 0
+            return direct_result
+        
+        # Step 3: If direct access also failed, return search result or error
+        if simple_result.get('success'):
+            return simple_result
+        return direct_result
         
         # 如果被拦截或失败，且 Playwright 可用，再用浏览器
         if not self.playwright_available:
